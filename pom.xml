@@ -10,16 +10,18 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>nrfaboekhoudapplicatie</artifactId>
+    <artifactId>zorgmate</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>NRFA Boekhoudapplicatie</name>
-    <description>Boekhoudapplicatie voor ZZP'ers in de zorg</description>
+    <name>ZorgMate</name>
+    <description>ZorgMate applicatie voor ZZP'ers in de zorg</description>
 
     <properties>
         <java.version>17</java.version>
+        <sonar.projectKey>Fantasyfays_ZorgMate</sonar.projectKey>
+        <sonar.organization>fantasyfays</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
-    <!-- ✅ Plaats alle dependencies binnen dit <dependencies>-element -->
     <dependencies>
         <!-- ✅ Spring Boot Web voor REST API -->
         <dependency>
@@ -75,6 +77,13 @@
             <version>2.2.0</version>
         </dependency>
 
+        <!-- ✅ SonarCloud Maven Plugin -->
+        <dependency>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <version>4.0.0.4121</version>
+        </dependency>
+
         <!-- ✅ Spring Boot Starter Test (voor unit tests) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -94,6 +103,13 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- ✅ SonarCloud Plugin -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>4.0.0.4121</version>
             </plugin>
         </plugins>
     </build>
