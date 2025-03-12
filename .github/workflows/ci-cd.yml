@@ -37,6 +37,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Build project (Maven package)
+        run: mvn clean package
+
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
@@ -49,10 +52,11 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn sonar:sonar \
-            -Dsonar.projectKey=Fantasyfays_ZorgMate \  # ✅ Exacte projectKey
-            -Dsonar.organization=fantasyfays \  # ✅ Exacte organisatie
+            -Dsonar.projectKey=Fantasyfays_ZorgMate \
+            -Dsonar.organization=fantasyfays \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${SONAR_TOKEN}
+            -Dsonar.login=${SONAR_TOKEN} \
+            -Dsonar.java.binaries=target/classes
 
   deploy:
     needs: sonarcloud
