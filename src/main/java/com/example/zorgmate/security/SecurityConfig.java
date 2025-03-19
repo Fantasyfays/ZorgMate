@@ -20,16 +20,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Schakel CSRF uit
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless sessies
+                .csrf(csrf -> csrf.disable()) // Schakel CSRF uit (handig voor een REST API zonder sessies)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Gebruik stateless sessies
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
-                        .requestMatchers("/api/auth/me", "/api/invoices/**").authenticated()
-                        .anyRequest().permitAll()
+                        .anyRequest().permitAll() // ✅ ALLE endpoints zijn openbaar en toegankelijk
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin())) // Sta framing toe voor H2-console
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())); // Configureer CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())); // CORS instellingen
 
         return http.build();
     }
