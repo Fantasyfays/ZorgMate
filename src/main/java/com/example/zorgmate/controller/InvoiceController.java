@@ -1,7 +1,7 @@
 package com.example.zorgmate.controller;
 
-import com.example.zorgmate.Service.interfaces.InvoiceService;
-import com.example.zorgmate.dal.entity.InvoiceStatus;
+import com.example.zorgmate.service.interfaces.InvoiceService;
+import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import jakarta.validation.Valid;
@@ -22,6 +22,11 @@ public class InvoiceController {
 
     public InvoiceController(InvoiceService invoiceService) {
         this.invoiceService = invoiceService;
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<InvoiceResponseDTO> getInvoiceById(@PathVariable Long id) {
+        return ResponseEntity.ok(invoiceService.getInvoiceById(id));
     }
 
     @PostMapping

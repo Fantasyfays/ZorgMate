@@ -1,4 +1,4 @@
-package com.example.zorgmate.dal.entity;
+package com.example.zorgmate.dal.entity.Invoice;
 
 import jakarta.persistence.*;
 import lombok.*;

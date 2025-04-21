@@ -15,7 +15,7 @@ public class InvoiceResponseDTO {
     private Long id;
     private LocalDate issueDate;
     private LocalDate dueDate;
-    private int invoiceNumber;
+    private String invoiceNumber;
     private String status;
     private BigDecimal totalAmount;
     private String senderName;

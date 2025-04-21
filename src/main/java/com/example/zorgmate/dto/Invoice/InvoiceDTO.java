@@ -1,6 +1,6 @@
 package com.example.zorgmate.dto.Invoice;
 
-import com.example.zorgmate.dal.entity.InvoiceStatus;
+import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;

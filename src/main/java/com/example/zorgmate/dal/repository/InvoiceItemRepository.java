@@ -1,6 +1,6 @@
 package com.example.zorgmate.dal.repository;
 
-import com.example.zorgmate.dal.entity.InvoiceItem;
+import com.example.zorgmate.dal.entity.Invoice.InvoiceItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

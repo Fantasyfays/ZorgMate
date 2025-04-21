@@ -1,16 +1,13 @@
 package com.example.zorgmate.dto.User;
 
-import com.example.zorgmate.dal.entity.UserRole;
-import lombok.*;
+import com.example.zorgmate.dal.entity.User.UserRole;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-@Getter
-@Setter
+@Data
 @AllArgsConstructor
-@NoArgsConstructor
-@Builder
 public class UserDTO {
     private Long id;
     private String username;
-    private String email;
     private UserRole role;
 }

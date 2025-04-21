@@ -1,5 +1,6 @@
-package com.example.zorgmate.dal.entity;
+package com.example.zorgmate.dal.entity.User;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,8 +20,8 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @JsonIgnore
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

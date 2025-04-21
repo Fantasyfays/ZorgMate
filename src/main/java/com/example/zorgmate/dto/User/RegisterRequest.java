@@ -1,7 +1,6 @@
 package com.example.zorgmate.dto.User;
 
-import com.example.zorgmate.dal.entity.UserRole;
-import jakarta.validation.constraints.Email;
+import com.example.zorgmate.dal.entity.User.UserRole;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,9 +16,8 @@ public class RegisterRequest {
     @NotBlank(message = "Username mag niet leeg zijn")
     private String username;
 
-    @NotBlank(message = "Email mag niet leeg zijn")
-    @Email(message = "Ongeldig e-mailadres")
-    private String email;
+    @NotBlank(message = "Wachtwoord mag niet leeg zijn")
+    private String password;
 
     private UserRole role;
 }
