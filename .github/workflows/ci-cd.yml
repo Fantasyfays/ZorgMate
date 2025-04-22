@@ -3,10 +3,9 @@ name: ZorgMate CI/CD Pipeline
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - master
+      - 'feature/**'
+
 
 jobs:
   build:
