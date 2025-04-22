@@ -11,6 +11,30 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: zorg
+          POSTGRES_PASSWORD: 123
+          POSTGRES_DB: zorgmate
+        options: >-
+          --health-cmd="pg_isready -U zorg" 
+          --health-interval=10s 
+          --health-timeout=5s 
+          --health-retries=5
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/zorgmate
+      SPRING_DATASOURCE_USERNAME: zorg
+      SPRING_DATASOURCE_PASSWORD: 123
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
