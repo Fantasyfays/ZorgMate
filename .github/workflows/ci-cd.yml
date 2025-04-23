@@ -1,5 +1,4 @@
 name: ZorgMate CI/CD Pipeline
-
 on:
   push:
     branches:
@@ -94,6 +93,7 @@ jobs:
 
       - name: Build and run with Compose
         run: |
-          docker-compose -f docker-compose.yml build
-          docker-compose -f docker-compose.yml up -d
+          docker compose -f docker-compose.yml build
+          docker compose -f docker-compose.yml up -d
           docker ps
+
