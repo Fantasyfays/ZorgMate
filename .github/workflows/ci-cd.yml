@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - master
+      - main
       - 'feature/**'
-
 
 jobs:
   build:
@@ -21,9 +21,9 @@ jobs:
           POSTGRES_PASSWORD: 123
           POSTGRES_DB: zorgmate
         options: >-
-          --health-cmd="pg_isready -U zorg" 
-          --health-interval=10s 
-          --health-timeout=5s 
+          --health-cmd="pg_isready -U zorg"
+          --health-interval=10s
+          --health-timeout=5s
           --health-retries=5
 
     env:
@@ -81,23 +81,20 @@ jobs:
             -Dsonar.login=${SONAR_TOKEN} \
             -Dsonar.java.binaries=target/classes
 
-deploy:
-  needs: sonarcloud
-  runs-on: ubuntu-latest
-  if: github.ref == 'refs/heads/main'
+  deploy:
+    needs: sonarcloud
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Build Docker images via Compose
-      run: docker-compose -f docker-compose.yml build
-
-    - name: Start containers (test deployment)
-      run: docker-compose -f docker-compose.yml up -d
-
-    - name: Show running containers
-      run: docker ps
+      - name: Build and run with Compose
+        run: |
+          docker-compose -f docker-compose.yml build
+          docker-compose -f docker-compose.yml up -d
+          docker ps

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   zorgmate-app:
-    image: fays21/zorgmate-app:latest
+    build: .
     ports:
       - "8080:8080"
     environment:
