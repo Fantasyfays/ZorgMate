@@ -2,6 +2,7 @@ package com.example.zorgmate.controller;
 
 import com.example.zorgmate.service.interfaces.UserService;
 import com.example.zorgmate.dto.User.RegisterRequest;
+import com.example.zorgmate.dto.User.UpdateUserRequest;
 import com.example.zorgmate.dto.User.UserDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +57,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody RegisterRequest request, BindingResult result) {
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request, BindingResult result) {
         if (result.hasErrors()) {
             Map<String, String> errors = new HashMap<>();
             for (FieldError error : result.getFieldErrors()) {

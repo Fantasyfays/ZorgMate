@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  zorgmate-app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://zorgmate-db:5432/zorgmate
+      SPRING_DATASOURCE_USERNAME: zorguser
+      SPRING_DATASOURCE_PASSWORD: zorgpass
+    depends_on:
+      - zorgmate-db
+
+  zorgmate-db:
+    image: postgres:14
+    container_name: zorgmate-db
+    environment:
+      POSTGRES_DB: zorgmate
+      POSTGRES_USER: zorguser
+      POSTGRES_PASSWORD: zorgpass
+    volumes:
+      - zorgmate-data:/var/lib/postgresql/data
+
+volumes:
+  zorgmate-data:

@@ -9,10 +9,13 @@ import com.example.zorgmate.dal.repository.InvoiceRepository;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,9 +31,12 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     public InvoiceResponseDTO getInvoiceById(Long id) {
-        Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Factuur niet gevonden"));
+        Optional<Invoice> invoiceOptional = invoiceRepository.findById(id);
+        if (!invoiceOptional.isPresent()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden");
+        }
 
+        Invoice invoice = invoiceOptional.get();
         List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
         return mapToDTO(invoice, items);
     }
