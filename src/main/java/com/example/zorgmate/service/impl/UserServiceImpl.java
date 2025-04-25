@@ -5,6 +5,7 @@ import com.example.zorgmate.dal.entity.User.User;
 import com.example.zorgmate.dal.entity.User.UserRole;
 import com.example.zorgmate.dal.repository.UserRepository;
 import com.example.zorgmate.dto.User.RegisterRequest;
+import com.example.zorgmate.dto.User.UpdateUserRequest;
 import com.example.zorgmate.dto.User.UserDTO;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDTO updateUser(Long userId, RegisterRequest request) {
+    public UserDTO updateUser(Long userId, UpdateUserRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Gebruiker niet gevonden"));
 
