@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   zorgmate-app:
-    image: jouwgebruikersnaam/zorgmate:latest
+    image: fays21/zorgmate:latest
     restart: always
     ports:
       - "8080:8080"
@@ -32,7 +32,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_POLL_INTERVAL: 300 # elke 5 minuten
+      WATCHTOWER_POLL_INTERVAL: 300
       WATCHTOWER_INCLUDE_RESTARTING: "true"
 
 volumes:
