@@ -33,4 +33,8 @@ public class InvoiceItem {
     @ManyToOne
     @JoinColumn(name = "invoice_id", nullable = false)
     private Invoice invoice;
+
+    @ManyToOne
+    private TimeEntry timeEntry;
+
 }

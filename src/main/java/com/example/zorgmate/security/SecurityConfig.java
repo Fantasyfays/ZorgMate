@@ -25,7 +25,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll() // Sta alles toe
                 )
-                // Verwijder de verouderde frameOptions() en Content-Security-Policy header en stel nieuwe headers in
                 .headers(headers -> headers
                         .addHeaderWriter(new StaticHeadersWriter("X-Frame-Options", "SAMEORIGIN"))
                         .addHeaderWriter(new StaticHeadersWriter("Content-Security-Policy", "frame-ancestors 'self'"))

@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   zorgmate-app:
-    build: .
+    image: jouwgebruikersnaam/zorgmate:latest
+    restart: always
     ports:
       - "8080:8080"
     environment:
@@ -15,12 +16,24 @@ services:
   zorgmate-db:
     image: postgres:14
     container_name: zorgmate-db
+    restart: always
     environment:
       POSTGRES_DB: zorgmate
       POSTGRES_USER: zorguser
       POSTGRES_PASSWORD: zorgpass
     volumes:
       - zorgmate-data:/var/lib/postgresql/data
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: 300 # elke 5 minuten
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
 
 volumes:
   zorgmate-data:
