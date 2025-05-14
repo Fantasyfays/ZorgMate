@@ -4,6 +4,8 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -23,4 +25,6 @@ public class InvoiceItemDTO {
 
     @DecimalMin(value = "0.01", message = "Subtotaal moet minimaal 0.01 zijn")
     private BigDecimal subTotal;
+
+    private LocalDate date;
 }

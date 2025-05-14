@@ -1,0 +1,18 @@
+package com.example.zorgmate.dto.Client;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class ClientCreateDTO {
+    @NotBlank(message = "Naam mag niet leeg zijn")
+    private String name;
+
+    @Email(message = "Ongeldig e-mailadres")
+    @NotBlank(message = "E-mailadres is verplicht")
+    private String email;
+
+    @NotBlank(message = "Telefoonnummer is verplicht")
+    private String phone;
+}
