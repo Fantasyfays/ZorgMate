@@ -1,10 +1,10 @@
 package com.example.zorgmate;
 
-import com.example.zorgmate.dal.entity.Invoice.Invoice;
-import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
+import com.example.zorgmate.dal.entity.Client.Client;
+import com.example.zorgmate.dal.entity.Invoice.*;
 import com.example.zorgmate.dal.repository.InvoiceItemRepository;
 import com.example.zorgmate.dal.repository.InvoiceRepository;
-import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
+import com.example.zorgmate.dal.repository.TimeEntryRepository;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import com.example.zorgmate.service.impl.InvoiceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,7 +13,7 @@ import org.mockito.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -26,6 +26,9 @@ public class InvoiceServiceImplTest {
     @Mock
     private InvoiceItemRepository invoiceItemRepository;
 
+    @Mock
+    private TimeEntryRepository timeEntryRepository;
+
     @InjectMocks
     private InvoiceServiceImpl invoiceService;
 
@@ -34,36 +37,47 @@ public class InvoiceServiceImplTest {
         MockitoAnnotations.openMocks(this);
     }
 
-
     @Test
-    void testCreateInvoiceMetGeenItems() {
-        CreateInvoiceRequestDTO dto = CreateInvoiceRequestDTO.builder()
-                .invoiceNumber("INV-002")
+    void testAutoGenerateInvoiceFromUnbilled() {
+        Long clientId = 1L;
+
+        Client dummyClient = Client.builder()
+                .id(clientId)
+                .name("Klant A")
+                .build();
+
+        TimeEntry timeEntry = TimeEntry.builder()
+                .id(1L)
+                .client(dummyClient)
+                .description("Consult")
+                .hours(2)
+                .hourlyRate(BigDecimal.valueOf(50))
+                .build();
+
+        Invoice dummyInvoice = Invoice.builder()
+                .id(100L)
+                .invoiceNumber("INV-2025-0001")
+                .receiverName("Klant A")
                 .senderName("ZorgMate")
-                .receiverName("Klant B")
                 .issueDate(LocalDate.now())
-                .dueDate(LocalDate.now().plusDays(10))
-                .status("UNPAID")
-                .items(List.of())
-                .build();
-
-        Invoice saved = Invoice.builder()
-                .id(3L)
-                .invoiceNumber("INV-002")
-                .senderName("ZorgMate")
-                .receiverName("Klant B")
-                .issueDate(dto.getIssueDate())
-                .dueDate(dto.getDueDate())
+                .dueDate(LocalDate.now().plusDays(14))
                 .status(InvoiceStatus.UNPAID)
-                .amount(BigDecimal.ZERO)
+                .amount(BigDecimal.valueOf(100))
                 .build();
 
-        when(invoiceRepository.save(any())).thenReturn(saved);
+        when(timeEntryRepository.findByClientIdAndInvoiceIsNull(clientId)).thenReturn(List.of(timeEntry));
+        when(invoiceRepository.count()).thenReturn(0L);
+        when(invoiceRepository.save(any())).thenReturn(dummyInvoice);
+        when(invoiceItemRepository.saveAll(any())).thenReturn(null); // niet relevant voor de assert
+        when(timeEntryRepository.saveAll(any())).thenReturn(null);
 
-        InvoiceResponseDTO response = invoiceService.createInvoice(dto);
+        InvoiceResponseDTO result = invoiceService.autoGenerateInvoiceFromUnbilled(clientId);
 
-        assertNotNull(response);
-        assertEquals(BigDecimal.ZERO, response.getTotalAmount());
-        assertEquals(0, response.getItems().size());
+        assertNotNull(result);
+        assertEquals("Klant A", result.getReceiverName());
+        assertEquals("ZorgMate", result.getSenderName());
+        assertEquals(BigDecimal.valueOf(100), result.getTotalAmount());
+        assertEquals(1, result.getItems().size());
+        assertEquals("Consult", result.getItems().get(0).getDescription());
     }
 }
