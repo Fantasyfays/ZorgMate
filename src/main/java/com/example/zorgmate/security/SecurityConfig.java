@@ -37,7 +37,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // Sta alleen localhost:3000 toe
+        config.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "https://frontend-zorgmate-production.up.railway.app"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*")); // Sta alle headers toe
         config.setAllowCredentials(true); // Sta credentials toe (zoals cookies en authorization headers)
