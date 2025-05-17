@@ -1,11 +1,11 @@
-# 🔧 Stap 1: Build stage
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Backend (bijv. Spring Boot)
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
 COPY . .
-RUN mvn clean package -DskipTests
+RUN ./mvnw clean package -DskipTests
 
-# 🛠️ Stap 2: Runtime stage
-FROM eclipse-temurin:17
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/target/zorgmate-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/backend.jar app.jar
+EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
