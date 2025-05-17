@@ -2,23 +2,23 @@ name: Build and Push Backend
 
 on:
   push:
-    branches: [main]
+    branches: [master]  # Of 'main' als jouw branch zo heet
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up JDK
+      - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Build JAR
+      - name: Build JAR with Maven
         run: mvn clean package -DskipTests
 
       - name: Log in to Docker Hub
@@ -32,4 +32,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/zorgmate:latest
+          tags: fays21/zorgmate:latest
