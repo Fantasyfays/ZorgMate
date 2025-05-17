@@ -2,7 +2,7 @@ name: Build and Push Backend
 
 on:
   push:
-    branches: [master]  # Of 'main' als jouw branch zo heet
+    branches: [main]
 
 jobs:
   build:
