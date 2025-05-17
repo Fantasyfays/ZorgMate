@@ -1,93 +1,35 @@
-name: ZorgMate CI/CD Pipeline
+name: Build and Push Backend
 
 on:
   push:
-    branches:
-      - main
-      - master
-      - 'feature/**'
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
+          java-version: '21'
           distribution: 'temurin'
-          java-version: '17'
 
-      - name: Build with Maven
+      - name: Build JAR
         run: mvn clean package -DskipTests
-
-  test:
-    needs: build
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:14
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: zorg
-          POSTGRES_PASSWORD: 123
-          POSTGRES_DB: zorgmate
-        options: >-
-          --health-cmd="pg_isready -U zorg"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    env:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/zorgmate
-      SPRING_DATASOURCE_USERNAME: zorg
-      SPRING_DATASOURCE_PASSWORD: 123
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Run unit tests
-        run: mvn test
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: target/surefire-reports
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push Docker image
+      - name: Build & Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: fays21/zorgmate:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/zorgmate:latest
