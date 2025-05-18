@@ -25,8 +25,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build project
-        run: mvn clean compile
+      - name: Build project (skip tests)
+        run: mvn clean package -DskipTests
 
   test:
     runs-on: ubuntu-latest
