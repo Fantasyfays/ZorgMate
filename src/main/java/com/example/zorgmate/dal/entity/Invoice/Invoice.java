@@ -6,8 +6,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-@Entity
+import java.time.LocalDate;@Entity
 @Getter
 @Setter
 @AllArgsConstructor
@@ -45,6 +44,9 @@ public class Invoice {
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InvoiceItem> items = new ArrayList<>();
 
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TimeEntry> timeEntries = new ArrayList<>();
+
     @Column(nullable = false)
-    private String createdBy;  // ← noodzakelijk voor filtering
+    private String createdBy;
 }

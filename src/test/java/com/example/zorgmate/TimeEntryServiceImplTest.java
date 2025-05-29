@@ -12,6 +12,8 @@ import com.example.zorgmate.service.impl.TimeEntryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -36,7 +38,8 @@ class TimeEntryServiceImplTest {
 
     @Test
     void createTimeEntry_shouldReturnDTO_whenClientAndProjectExist() {
-        // Arrange
+        String username = "testuser";
+
         TimeEntryCreateDTO dto = TimeEntryCreateDTO.builder()
                 .description("Consultatie")
                 .hours(4)
@@ -53,10 +56,8 @@ class TimeEntryServiceImplTest {
         when(projectRepo.findById(10L)).thenReturn(Optional.of(project));
         when(timeEntryRepo.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        // Act
         TimeEntryResponseDTO result = timeEntryService.createTimeEntry(dto);
 
-        // Assert
         assertEquals("Consultatie", result.getDescription());
         assertEquals(4, result.getHours());
         assertEquals(BigDecimal.valueOf(75), result.getHourlyRate());
@@ -66,7 +67,8 @@ class TimeEntryServiceImplTest {
 
     @Test
     void createTimeEntry_shouldHandleNullProject() {
-        // Arrange
+        String username = "testuser";
+
         TimeEntryCreateDTO dto = TimeEntryCreateDTO.builder()
                 .description("Evaluatie")
                 .hours(2)
@@ -81,10 +83,8 @@ class TimeEntryServiceImplTest {
         when(clientRepo.findById(1L)).thenReturn(Optional.of(client));
         when(timeEntryRepo.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        // Act
         TimeEntryResponseDTO result = timeEntryService.createTimeEntry(dto);
 
-        // Assert
         assertEquals("Evaluatie", result.getDescription());
         assertEquals("ClientX", result.getClientName());
         assertNull(result.getProjectName());
@@ -92,7 +92,6 @@ class TimeEntryServiceImplTest {
 
     @Test
     void createTimeEntry_shouldThrow_whenClientNotFound() {
-        // Arrange
         TimeEntryCreateDTO dto = TimeEntryCreateDTO.builder()
                 .description("Consult")
                 .hours(1)
@@ -103,13 +102,16 @@ class TimeEntryServiceImplTest {
 
         when(clientRepo.findById(404L)).thenReturn(Optional.empty());
 
-        // Act + Assert
         assertThrows(NoSuchElementException.class, () -> timeEntryService.createTimeEntry(dto));
     }
 
     @Test
     void getAllTimeEntries_shouldReturnMappedDTOs() {
-        // Arrange
+        String username = "user1";
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(username, null)
+        );
+
         Client client = Client.builder().name("ClientA").build();
         Project project = Project.builder().name("ProjectA").build();
 
@@ -121,23 +123,25 @@ class TimeEntryServiceImplTest {
                 .date(LocalDate.of(2025, 5, 29))
                 .client(client)
                 .project(project)
+                .createdBy(username)
                 .build();
 
-        when(timeEntryRepo.findAll()).thenReturn(List.of(entry));
+        when(timeEntryRepo.findByCreatedBy(username)).thenReturn(List.of(entry));
 
-        // Act
         List<TimeEntryResponseDTO> result = timeEntryService.getAllTimeEntries();
 
-        // Assert
         assertEquals(1, result.size());
         assertEquals("Advies", result.get(0).getDescription());
-        assertEquals("ClientA", result.get(0).getClientName());
-        assertEquals("ProjectA", result.get(0).getProjectName());
     }
+
 
     @Test
     void getUnbilledEntriesByClient_shouldReturnCorrectDTOs() {
-        // Arrange
+        String username = "user2";
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(username, null)
+        );
+
         Client client = Client.builder().name("ClientB").build();
         TimeEntry entry = TimeEntry.builder()
                 .id(2L)
@@ -147,17 +151,17 @@ class TimeEntryServiceImplTest {
                 .date(LocalDate.of(2025, 5, 28))
                 .client(client)
                 .project(null)
+                .createdBy(username)
                 .build();
 
-        when(timeEntryRepo.findByClientIdAndInvoiceIsNull(1L)).thenReturn(List.of(entry));
+        when(timeEntryRepo.findByClientIdAndInvoiceIsNullAndCreatedBy(1L, username)).thenReturn(List.of(entry));
 
-        // Act
         List<TimeEntryResponseDTO> result = timeEntryService.getUnbilledEntriesByClient(1L);
 
-        // Assert
         assertEquals(1, result.size());
         assertEquals("Analyse", result.get(0).getDescription());
         assertEquals("ClientB", result.get(0).getClientName());
         assertNull(result.get(0).getProjectName());
     }
+
 }

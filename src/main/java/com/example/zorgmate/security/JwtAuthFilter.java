@@ -34,13 +34,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             if (jwtUtil.validateToken(token)) {
                 String username = jwtUtil.extractUsername(token);
+                System.out.println("✅ Token is geldig. Gebruiker: " + username);
+
                 User user = userRepository.findByUsername(username).orElse(null);
                 if (user != null) {
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            username, null, List.of() // authorities kun je eventueel toevoegen
+                            username, null, List.of() // je kunt hier roles meegeven als nodig
                     );
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
+            } else {
+                System.out.println("❌ Ongeldig token.");
             }
         }
 

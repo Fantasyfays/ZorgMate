@@ -29,16 +29,17 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(headers -> headers.frameOptions().disable()) // 👈 Dit is essentieel voor H2-console
                 .authorizeHttpRequests(auth -> auth
-                        // 🔓 Openbare endpoints
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/users/register",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/h2/**",
+                                "/h2-console/**"
                         ).permitAll()
-                        // 🔒 Andere endpoints vereisen authenticatie
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -46,6 +47,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
     @Bean
     public JwtUtil jwtUtil() {

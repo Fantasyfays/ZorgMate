@@ -62,8 +62,11 @@ public class InvoiceController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable Long id, Authentication authentication) {
+        System.out.println("DELETE-request door gebruiker: " + authentication.getName());
+        System.out.println("DELETE-request voor factuur ID " + id + " door gebruiker: " + authentication.getName());
         invoiceService.deleteInvoiceForUser(id, authentication.getName());
         return ResponseEntity.noContent().build();
+
     }
 
     @PostMapping("/auto-generate")

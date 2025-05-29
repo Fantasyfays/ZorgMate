@@ -12,9 +12,11 @@ import com.example.zorgmate.service.impl.InvoiceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +37,62 @@ class InvoiceServiceImplTest {
     @BeforeEach
     void setup() {
         MockitoAnnotations.openMocks(this);
+    }
+    @Test
+    void deleteInvoiceForUser_shouldDeleteInvoiceItemsAndTimeEntries_whenOwnedByUser() {
+        // Arrange
+        Long invoiceId = 10L;
+        String username = "user1";
+
+        TimeEntry timeEntry = TimeEntry.builder()
+                .id(100L)
+                .description("Adviesgesprek")
+                .createdBy(username)
+                .build();
+
+        InvoiceItem item = InvoiceItem.builder()
+                .id(200L)
+                .description("Consult")
+                .timeEntry(timeEntry)
+                .build();
+
+        Invoice invoice = Invoice.builder()
+                .id(invoiceId)
+                .createdBy(username)
+                .items(List.of(item))
+                .timeEntries(List.of(timeEntry))
+                .build();
+
+        // Zet parent referenties
+        item.setInvoice(invoice);
+        timeEntry.setInvoice(invoice);
+
+        // Mocks
+        when(invoiceRepository.findById(invoiceId)).thenReturn(Optional.of(invoice));
+
+        // Act
+        invoiceService.deleteInvoiceForUser(invoiceId, username);
+
+        // Assert
+        verify(invoiceRepository).delete(invoice);
+        verifyNoMoreInteractions(invoiceItemRepository, timeEntryRepository);
+    }
+
+    @Test
+    void deleteInvoiceForUser_shouldThrowForbidden_whenUserIsNotOwner() {
+        Long invoiceId = 11L;
+        Invoice invoice = Invoice.builder()
+                .id(invoiceId)
+                .createdBy("andereGebruiker")
+                .build();
+
+        when(invoiceRepository.findById(invoiceId)).thenReturn(Optional.of(invoice));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                invoiceService.deleteInvoiceForUser(invoiceId, "user1")
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
     }
 
     @Test
@@ -132,13 +190,13 @@ class InvoiceServiceImplTest {
     void deleteInvoiceForUser_shouldRemove_ifOwnedByUser() {
         Invoice invoice = Invoice.builder().id(4L).createdBy(USERNAME).build();
         when(invoiceRepository.findById(4L)).thenReturn(Optional.of(invoice));
-        when(invoiceItemRepository.findByInvoiceId(4L)).thenReturn(List.of());
 
         invoiceService.deleteInvoiceForUser(4L, USERNAME);
 
-        verify(invoiceItemRepository).deleteAll(any());
         verify(invoiceRepository).delete(invoice);
+        verifyNoMoreInteractions(invoiceItemRepository, timeEntryRepository);
     }
+
 
     @Test
     void deleteInvoiceForUser_shouldThrow_ifNotOwned() {
@@ -148,4 +206,5 @@ class InvoiceServiceImplTest {
         assertThrows(ResponseStatusException.class, () ->
                 invoiceService.deleteInvoiceForUser(5L, USERNAME));
     }
+
 }

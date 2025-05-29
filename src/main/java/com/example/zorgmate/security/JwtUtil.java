@@ -3,15 +3,28 @@ package com.example.zorgmate.security;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+@Component
 public class JwtUtil {
 
-    private final SecretKey secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+    @Value("${jwt.secret}")
+    private String secret;
+
+    private SecretKey secretKey;
+
+    @PostConstruct
+    public void init() {
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
     public String generateToken(String username, String role) {
         Map<String, Object> claims = new HashMap<>();
@@ -43,6 +56,7 @@ public class JwtUtil {
                     .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
+            System.out.println("JWT VALIDATIE MISLUKT: " + e.getMessage());
             return false;
         }
     }

@@ -21,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -84,34 +85,23 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public void deleteInvoiceForUser(Long id, String username) {
-        Invoice invoice = invoiceRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found"));
+    public void deleteInvoiceForUser(Long invoiceId, String username) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
 
-        if (!invoice.getCreatedBy().trim().equalsIgnoreCase(username.trim())) {
-            throw new AccessDeniedException("Je mag deze factuur niet verwijderen.");
+        if (!invoice.getCreatedBy().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Je mag deze factuur niet verwijderen.");
         }
 
-        // 🔁 1. Eerst alle invoice items ophalen
-        List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
+        System.out.println("🧪 DELETE Factuur ID: " + invoice.getId());
+        System.out.println("🧪 Ingelogde gebruiker: '" + username + "'");
+        System.out.println("🧪 Factuur aangemaakt door: '" + invoice.getCreatedBy() + "'");
 
-        // 🔧 2. Ontkoppel alle gekoppelde timeEntries (anders krijg je constraint errors)
-        for (InvoiceItem item : items) {
-            item.setTimeEntry(null);
-        }
-        invoiceItemRepository.saveAll(items);
-
-        // ✅ 3. Verwijder de invoice items
-        invoiceItemRepository.deleteAll(items);
-
-        // ✅ 4. Verwijder alle gekoppelde timeEntries
-        List<TimeEntry> linkedEntries = timeEntryRepository.findByInvoiceId(invoice.getId());
-        timeEntryRepository.deleteAll(linkedEntries);
-
-        // ✅ 5. Verwijder tot slot de factuur
+        // Hibernate regelt het verwijderen van gekoppelde InvoiceItems en TimeEntries automatisch
         invoiceRepository.delete(invoice);
-    }
 
+        System.out.println("✅ Factuur + gekoppelde items en timeEntries verwijderd.");
+    }
 
 
 
