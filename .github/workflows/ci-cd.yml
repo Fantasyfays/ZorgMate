@@ -78,7 +78,6 @@ jobs:
             -Dsonar.organization=fantasyfays \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${SONAR_TOKEN} \
-            -Dsonar.java.binaries=target/classes \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
   deploy:
