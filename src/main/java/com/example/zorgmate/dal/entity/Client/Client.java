@@ -18,4 +18,7 @@ public class Client {
     private String email;
 
     private String phone;
+
+    @Column(nullable = false)
+    private String createdBy;
 }

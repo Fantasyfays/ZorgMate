@@ -8,4 +8,7 @@ import java.util.List;
 public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
     List<TimeEntry> findByProjectId(Long projectId);
     List<TimeEntry> findByClientIdAndInvoiceIsNull(Long clientId);
+    List<TimeEntry> findByCreatedBy(String createdBy);
+    List<TimeEntry> findByClientIdAndInvoiceIsNullAndCreatedBy(Long clientId, String createdBy);
+    List<TimeEntry> findByInvoiceId(Long invoiceId);
 }

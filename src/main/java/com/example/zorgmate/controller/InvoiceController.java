@@ -1,20 +1,17 @@
 package com.example.zorgmate.controller;
 
 import com.example.zorgmate.dto.Invoice.AutoInvoiceRequestDTO;
-import com.example.zorgmate.dto.Invoice.GenerateInvoiceRequestDTO;
-import com.example.zorgmate.service.interfaces.InvoiceService;
-import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
+import com.example.zorgmate.service.interfaces.InvoiceService;
+import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
+import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,45 +27,50 @@ public class InvoiceController {
     }
 
     @GetMapping
-    public ResponseEntity<List<InvoiceResponseDTO>> getAllInvoices() {
-        return ResponseEntity.ok(invoiceService.getAllInvoices());
+    public ResponseEntity<List<InvoiceResponseDTO>> getAllInvoices(Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(invoiceService.getInvoicesForUser(username));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<InvoiceResponseDTO> getInvoiceById(@PathVariable Long id) {
-        return ResponseEntity.ok(invoiceService.getInvoiceById(id));
-    }
-
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<InvoiceResponseDTO>> getInvoicesByStatus(@PathVariable InvoiceStatus status) {
-        return ResponseEntity.ok(invoiceService.getInvoicesByStatus(status));
+    public ResponseEntity<InvoiceResponseDTO> getInvoiceById(@PathVariable Long id, Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(invoiceService.getInvoiceByIdForUser(id, username));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateInvoice(@PathVariable Long id,
                                            @Valid @RequestBody CreateInvoiceRequestDTO dto,
-                                           BindingResult result) {
+                                           BindingResult result,
+                                           Authentication authentication) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(getValidationErrors(result));
         }
-        return ResponseEntity.ok(invoiceService.updateInvoice(id, dto));
+
+        String username = authentication.getName();
+        return ResponseEntity.ok(invoiceService.updateInvoiceForUser(id, dto, username));
     }
 
     @PatchMapping("/{id}/status/{status}")
-    public ResponseEntity<String> updateInvoiceStatus(@PathVariable Long id, @PathVariable InvoiceStatus status) {
-        invoiceService.updateInvoiceStatus(id, status);
-        return ResponseEntity.ok("Factuurstatus bijgewerkt naar: " + status);
+    public ResponseEntity<String> updateInvoiceStatus(@PathVariable Long id,
+                                                      @PathVariable InvoiceStatus status,
+                                                      Authentication authentication) {
+        String username = authentication.getName();
+        invoiceService.updateInvoiceStatusForUser(id, status, username);
+        return ResponseEntity.ok("Status bijgewerkt naar " + status);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteInvoice(@PathVariable Long id) {
-        invoiceService.deleteInvoice(id);
-        return ResponseEntity.ok("Factuur met ID " + id + " is verwijderd.");
+    public ResponseEntity<Void> deleteInvoice(@PathVariable Long id, Authentication authentication) {
+        invoiceService.deleteInvoiceForUser(id, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/auto-generate")
-    public ResponseEntity<InvoiceResponseDTO> autoGenerateInvoice(@RequestBody AutoInvoiceRequestDTO dto) {
-        return ResponseEntity.ok(invoiceService.autoGenerateInvoiceFromUnbilled(dto.getClientId()));
+    public ResponseEntity<InvoiceResponseDTO> autoGenerateInvoice(@Valid @RequestBody AutoInvoiceRequestDTO dto,
+                                                                  Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(invoiceService.autoGenerateInvoiceFromUnbilled(dto.getClientId(), username));
     }
 
     private Map<String, String> getValidationErrors(BindingResult result) {

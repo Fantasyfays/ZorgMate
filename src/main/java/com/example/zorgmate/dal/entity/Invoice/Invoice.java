@@ -2,10 +2,11 @@ package com.example.zorgmate.dal.entity.Invoice;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
+import java.util.ArrayList;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
 @Entity
 @Getter
 @Setter
@@ -40,4 +41,10 @@ public class Invoice {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InvoiceStatus status;
+
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<InvoiceItem> items = new ArrayList<>();
+
+    @Column(nullable = false)
+    private String createdBy;  // ← noodzakelijk voor filtering
 }

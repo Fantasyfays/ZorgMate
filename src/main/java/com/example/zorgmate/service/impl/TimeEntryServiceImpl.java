@@ -3,8 +3,12 @@ package com.example.zorgmate.service.impl;
 import com.example.zorgmate.dal.entity.Client.Client;
 import com.example.zorgmate.dal.entity.Invoice.TimeEntry;
 import com.example.zorgmate.dal.entity.Project.Project;
-import com.example.zorgmate.dal.repository.*;
-import com.example.zorgmate.dto.timeentry.*;
+import com.example.zorgmate.dal.repository.ClientRepository;
+import com.example.zorgmate.dal.repository.ProjectRepository;
+import com.example.zorgmate.dal.repository.TimeEntryRepository;
+import com.example.zorgmate.dto.timeentry.TimeEntryCreateDTO;
+import com.example.zorgmate.dto.timeentry.TimeEntryResponseDTO;
+import com.example.zorgmate.security.AuthUtils;
 import com.example.zorgmate.service.interfaces.TimeEntryService;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +30,7 @@ public class TimeEntryServiceImpl implements TimeEntryService {
 
     @Override
     public TimeEntryResponseDTO createTimeEntry(TimeEntryCreateDTO dto) {
+        String username = AuthUtils.getCurrentUsername();
         Client client = clientRepo.findById(dto.getClientId()).orElseThrow();
         Project project = dto.getProjectId() != null ? projectRepo.findById(dto.getProjectId()).orElse(null) : null;
 
@@ -36,23 +41,25 @@ public class TimeEntryServiceImpl implements TimeEntryService {
                 .date(dto.getDate())
                 .client(client)
                 .project(project)
+                .createdBy(username)
                 .build();
 
         timeEntryRepo.save(entry);
-
         return mapToDTO(entry);
     }
 
     @Override
     public List<TimeEntryResponseDTO> getAllTimeEntries() {
-        return timeEntryRepo.findAll().stream()
+        String username = AuthUtils.getCurrentUsername();
+        return timeEntryRepo.findByCreatedBy(username).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<TimeEntryResponseDTO> getUnbilledEntriesByClient(Long clientId) {
-        return timeEntryRepo.findByClientIdAndInvoiceIsNull(clientId).stream()
+        String username = AuthUtils.getCurrentUsername();
+        return timeEntryRepo.findByClientIdAndInvoiceIsNullAndCreatedBy(clientId, username).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -68,4 +75,10 @@ public class TimeEntryServiceImpl implements TimeEntryService {
                 .projectName(entry.getProject() != null ? entry.getProject().getName() : null)
                 .build();
     }
+
+    @Override
+    public List<TimeEntry> findByInvoiceId(Long invoiceId) {
+        return timeEntryRepo.findByInvoiceId(invoiceId);
+    }
+
 }

@@ -11,11 +11,13 @@ import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import com.example.zorgmate.service.interfaces.InvoiceService;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,8 +39,19 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public InvoiceResponseDTO getInvoiceById(Long id) {
+    public List<InvoiceResponseDTO> getInvoicesForUser(String username) {
+        return invoiceRepository.findByCreatedBy(username).stream()
+                .map(invoice -> {
+                    List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
+                    return mapToDTO(invoice, items);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public InvoiceResponseDTO getInvoiceByIdForUser(Long id, String username) {
         Invoice invoice = invoiceRepository.findById(id)
+                .filter(i -> i.getCreatedBy().equals(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
 
         List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
@@ -46,28 +59,9 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public List<InvoiceResponseDTO> getAllInvoices() {
-        return invoiceRepository.findAll().stream()
-                .map(invoice -> {
-                    List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
-                    return mapToDTO(invoice, items);
-                })
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<InvoiceResponseDTO> getInvoicesByStatus(InvoiceStatus status) {
-        return invoiceRepository.findByStatus(status).stream()
-                .map(invoice -> {
-                    List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
-                    return mapToDTO(invoice, items);
-                })
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public InvoiceResponseDTO updateInvoice(Long id, CreateInvoiceRequestDTO dto) {
+    public InvoiceResponseDTO updateInvoiceForUser(Long id, CreateInvoiceRequestDTO dto, String username) {
         Invoice invoice = invoiceRepository.findById(id)
+                .filter(i -> i.getCreatedBy().equals(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
 
         invoice.setInvoiceNumber(dto.getInvoiceNumber());
@@ -90,28 +84,54 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public void updateInvoiceStatus(Long id, InvoiceStatus status) {
+    public void deleteInvoiceForUser(Long id, String username) {
         Invoice invoice = invoiceRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found"));
+
+        if (!invoice.getCreatedBy().trim().equalsIgnoreCase(username.trim())) {
+            throw new AccessDeniedException("Je mag deze factuur niet verwijderen.");
+        }
+
+        // 🔁 1. Eerst alle invoice items ophalen
+        List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
+
+        // 🔧 2. Ontkoppel alle gekoppelde timeEntries (anders krijg je constraint errors)
+        for (InvoiceItem item : items) {
+            item.setTimeEntry(null);
+        }
+        invoiceItemRepository.saveAll(items);
+
+        // ✅ 3. Verwijder de invoice items
+        invoiceItemRepository.deleteAll(items);
+
+        // ✅ 4. Verwijder alle gekoppelde timeEntries
+        List<TimeEntry> linkedEntries = timeEntryRepository.findByInvoiceId(invoice.getId());
+        timeEntryRepository.deleteAll(linkedEntries);
+
+        // ✅ 5. Verwijder tot slot de factuur
+        invoiceRepository.delete(invoice);
+    }
+
+
+
+
+    @Override
+    public void updateInvoiceStatusForUser(Long id, InvoiceStatus status, String username) {
+        Invoice invoice = invoiceRepository.findById(id)
+                .filter(i -> i.getCreatedBy().equals(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
         invoice.setStatus(status);
         invoiceRepository.save(invoice);
     }
 
     @Override
-    public void deleteInvoice(Long id) {
-        if (!invoiceRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden");
-        }
-        invoiceItemRepository.deleteAll(invoiceItemRepository.findByInvoiceId(id));
-        invoiceRepository.deleteById(id);
-    }
-
-    @Override
-    public InvoiceResponseDTO autoGenerateInvoiceFromUnbilled(Long clientId) {
-        List<TimeEntry> entries = timeEntryRepository.findByClientIdAndInvoiceIsNull(clientId);
+    public InvoiceResponseDTO autoGenerateInvoiceFromUnbilled(Long clientId, String username) {
+        List<TimeEntry> entries = timeEntryRepository.findByClientIdAndInvoiceIsNull(clientId).stream()
+                .filter(e -> e.getCreatedBy().equals(username))
+                .collect(Collectors.toList());
 
         if (entries.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geen ongefactureerde uren voor deze klant.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geen ongefactureerde uren gevonden.");
         }
 
         List<InvoiceItem> items = new ArrayList<>();
@@ -134,34 +154,25 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         Invoice invoice = Invoice.builder()
                 .invoiceNumber(generateInvoiceNumber())
-                .senderName("ZorgMate")
+                .senderName(username)
                 .receiverName(entries.get(0).getClient().getName())
                 .amount(total)
                 .issueDate(LocalDate.now())
                 .dueDate(LocalDate.now().plusDays(14))
                 .status(InvoiceStatus.UNPAID)
+                .createdBy(username)
                 .build();
 
         invoice = invoiceRepository.save(invoice);
 
-        for (InvoiceItem item : items) {
-            item.setInvoice(invoice);
-        }
+        for (InvoiceItem item : items) item.setInvoice(invoice);
         invoiceItemRepository.saveAll(items);
 
-        for (TimeEntry entry : entries) {
-            entry.setInvoice(invoice);
-        }
+        for (TimeEntry entry : entries) entry.setInvoice(invoice);
         timeEntryRepository.saveAll(entries);
 
         return mapToDTO(invoice, items);
     }
-
-    private String generateInvoiceNumber() {
-        long count = invoiceRepository.count() + 1;
-        return "INV-" + LocalDate.now().getYear() + "-" + String.format("%04d", count);
-    }
-
     private InvoiceResponseDTO mapToDTO(Invoice invoice, List<InvoiceItem> items) {
         List<InvoiceItemDTO> itemDTOs = items.stream()
                 .map(item -> new InvoiceItemDTO(
@@ -169,7 +180,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                         item.getHoursWorked(),
                         item.getHourlyRate(),
                         item.getSubTotal(),
-                        item.getTimeEntry() != null ? item.getTimeEntry().getDate() : null // ← voeg dit toe
+                        item.getTimeEntry() != null ? item.getTimeEntry().getDate() : null
                 ))
                 .collect(Collectors.toList());
 
@@ -185,7 +196,6 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .items(itemDTOs)
                 .build();
     }
-
 
     private List<InvoiceItem> mapToEntities(List<InvoiceItemDTO> itemDTOs, Invoice invoice) {
         return itemDTOs.stream()
@@ -204,4 +214,10 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .map(InvoiceItem::getSubTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
+
+    private String generateInvoiceNumber() {
+        long count = invoiceRepository.count() + 1;
+        return "INV-" + LocalDate.now().getYear() + "-" + String.format("%04d", count);
+    }
+
 }

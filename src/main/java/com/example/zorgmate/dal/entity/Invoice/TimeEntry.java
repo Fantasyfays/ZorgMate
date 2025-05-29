@@ -43,4 +43,7 @@ public class TimeEntry {
     @ManyToOne
     @JoinColumn(name = "invoice_id")
     private Invoice invoice;
+
+    @Column(nullable = false)
+    private String createdBy;
 }

@@ -1,5 +1,6 @@
 package com.example.zorgmate.dal.entity.Invoice;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,10 +32,13 @@ public class InvoiceItem {
     private BigDecimal subTotal;
 
     @ManyToOne
-    @JoinColumn(name = "invoice_id", nullable = false)
+    @JoinColumn(name = "invoice_id")
+    @JsonBackReference
     private Invoice invoice;
 
     @ManyToOne
+    @JoinColumn(name = "time_entry_id", nullable = true)
     private TimeEntry timeEntry;
+
 
 }
