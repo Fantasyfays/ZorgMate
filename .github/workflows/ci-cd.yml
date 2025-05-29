@@ -47,8 +47,8 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Run tests
-        run: mvn test
+      - name: Run tests and generate coverage report
+        run: mvn clean verify
 
   sonarcloud:
     runs-on: ubuntu-latest
@@ -62,12 +62,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-
-      - name: Download target directory
-        uses: actions/download-artifact@v4
-        with:
-          name: target
-          path: target/
 
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
@@ -84,7 +78,8 @@ jobs:
             -Dsonar.organization=fantasyfays \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${SONAR_TOKEN} \
-            -Dsonar.java.binaries=target/classes
+            -Dsonar.java.binaries=target/classes \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
   deploy:
     runs-on: ubuntu-latest
