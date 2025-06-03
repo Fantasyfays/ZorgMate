@@ -29,13 +29,14 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .headers(headers -> headers.frameOptions().disable()) // 👈 Dit is essentieel voor H2-console
+                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable())) // updated line
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/users/register",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
+                                "/api/users/**",
                                 "/swagger-ui.html",
                                 "/h2/**",
                                 "/h2-console/**"
@@ -47,6 +48,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
 
     @Bean
