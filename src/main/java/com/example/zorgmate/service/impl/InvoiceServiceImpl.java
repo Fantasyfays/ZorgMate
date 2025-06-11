@@ -97,7 +97,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         System.out.println("🧪 Ingelogde gebruiker: '" + username + "'");
         System.out.println("🧪 Factuur aangemaakt door: '" + invoice.getCreatedBy() + "'");
 
-        // Hibernate regelt het verwijderen van gekoppelde InvoiceItems en TimeEntries automatisch
         invoiceRepository.delete(invoice);
 
         System.out.println("✅ Factuur + gekoppelde items en timeEntries verwijderd.");

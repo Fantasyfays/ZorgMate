@@ -29,7 +29,20 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable())) // updated line
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.disable()) // Laat framing toe (bijv. voor H2-console)
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("default-src 'none'; " +
+                                        "script-src 'self'; " +
+                                        "connect-src 'self'; " +
+                                        "child-src 'self'; " +
+                                        "img-src 'self' data:; " +
+                                        "font-src 'self' data:; " +
+                                        "style-src 'self'; " +
+                                        "frame-ancestors 'none'; " +
+                                        "form-action 'self';")
+                        )
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
@@ -48,8 +61,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-
 
     @Bean
     public JwtUtil jwtUtil() {

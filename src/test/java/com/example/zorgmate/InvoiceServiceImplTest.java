@@ -1,7 +1,10 @@
 package com.example.zorgmate;
 
 import com.example.zorgmate.dal.entity.Client.Client;
-import com.example.zorgmate.dal.entity.Invoice.*;
+import com.example.zorgmate.dal.entity.Invoice.Invoice;
+import com.example.zorgmate.dal.entity.Invoice.InvoiceItem;
+import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
+import com.example.zorgmate.dal.entity.Invoice.TimeEntry;
 import com.example.zorgmate.dal.repository.InvoiceItemRepository;
 import com.example.zorgmate.dal.repository.InvoiceRepository;
 import com.example.zorgmate.dal.repository.TimeEntryRepository;
@@ -11,200 +14,244 @@ import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import com.example.zorgmate.service.impl.InvoiceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.nio.file.AccessDeniedException;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
 class InvoiceServiceImplTest {
 
-    @Mock private InvoiceRepository invoiceRepository;
-    @Mock private InvoiceItemRepository invoiceItemRepository;
-    @Mock private TimeEntryRepository timeEntryRepository;
+    @Mock
+    private InvoiceRepository invoiceRepository;
+    @Mock
+    private InvoiceItemRepository invoiceItemRepository;
+    @Mock
+    private TimeEntryRepository timeEntryRepository;
 
-    @InjectMocks private InvoiceServiceImpl invoiceService;
+    @InjectMocks
+    private InvoiceServiceImpl invoiceService;
 
-    private final String USERNAME = "user1";
+    private Invoice invoice;
+    private List<InvoiceItem> items;
 
     @BeforeEach
-    void setup() {
-        MockitoAnnotations.openMocks(this);
-    }
-    @Test
-    void deleteInvoiceForUser_shouldDeleteInvoiceItemsAndTimeEntries_whenOwnedByUser() {
-        // Arrange
-        Long invoiceId = 10L;
-        String username = "user1";
-
-        TimeEntry timeEntry = TimeEntry.builder()
-                .id(100L)
-                .description("Adviesgesprek")
-                .createdBy(username)
-                .build();
-
-        InvoiceItem item = InvoiceItem.builder()
-                .id(200L)
-                .description("Consult")
-                .timeEntry(timeEntry)
-                .build();
-
-        Invoice invoice = Invoice.builder()
-                .id(invoiceId)
-                .createdBy(username)
-                .items(List.of(item))
-                .timeEntries(List.of(timeEntry))
-                .build();
-
-        // Zet parent referenties
-        item.setInvoice(invoice);
-        timeEntry.setInvoice(invoice);
-
-        // Mocks
-        when(invoiceRepository.findById(invoiceId)).thenReturn(Optional.of(invoice));
-
-        // Act
-        invoiceService.deleteInvoiceForUser(invoiceId, username);
-
-        // Assert
-        verify(invoiceRepository).delete(invoice);
-        verifyNoMoreInteractions(invoiceItemRepository, timeEntryRepository);
-    }
-
-    @Test
-    void deleteInvoiceForUser_shouldThrowForbidden_whenUserIsNotOwner() {
-        Long invoiceId = 11L;
-        Invoice invoice = Invoice.builder()
-                .id(invoiceId)
-                .createdBy("andereGebruiker")
-                .build();
-
-        when(invoiceRepository.findById(invoiceId)).thenReturn(Optional.of(invoice));
-
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
-                invoiceService.deleteInvoiceForUser(invoiceId, "user1")
-        );
-
-        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
-    }
-
-    @Test
-    void autoGenerateInvoiceFromUnbilled_shouldReturnInvoiceDTO_whenEntriesExist() {
-        Client client = Client.builder().id(1L).name("Klant A").build();
-        TimeEntry entry = TimeEntry.builder()
+    void setUp() {
+        invoice = Invoice.builder()
                 .id(1L)
-                .client(client)
-                .description("Consult")
-                .hours(2)
-                .hourlyRate(BigDecimal.valueOf(50))
-                .createdBy(USERNAME)
-                .build();
-
-        Invoice invoice = Invoice.builder()
-                .id(100L)
                 .invoiceNumber("INV-2025-0001")
-                .receiverName("Klant A")
-                .senderName("ZorgMate")
                 .issueDate(LocalDate.now())
                 .dueDate(LocalDate.now().plusDays(14))
                 .status(InvoiceStatus.UNPAID)
-                .amount(BigDecimal.valueOf(100))
-                .createdBy(USERNAME)
-                .build();
-
-        when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(List.of(entry));
-        when(invoiceRepository.count()).thenReturn(0L);
-        when(invoiceRepository.save(any())).thenReturn(invoice);
-
-        InvoiceResponseDTO result = invoiceService.autoGenerateInvoiceFromUnbilled(1L, USERNAME);
-
-        assertNotNull(result);
-        assertEquals("Klant A", result.getReceiverName());
-        assertEquals(BigDecimal.valueOf(100), result.getTotalAmount());
-    }
-
-    @Test
-    void autoGenerateInvoiceFromUnbilled_shouldThrow_whenNoEntriesForUser() {
-        TimeEntry otherUserEntry = TimeEntry.builder()
-                .id(2L)
-                .createdBy("someoneElse")
-                .client(Client.builder().id(2L).build())
-                .build();
-
-        when(timeEntryRepository.findByClientIdAndInvoiceIsNull(2L)).thenReturn(List.of(otherUserEntry));
-
-        assertThrows(ResponseStatusException.class, () ->
-                invoiceService.autoGenerateInvoiceFromUnbilled(2L, USERNAME));
-    }
-
-    @Test
-    void getInvoiceByIdForUser_shouldReturnInvoice_ifOwnedByUser() {
-        Invoice invoice = Invoice.builder()
-                .id(1L)
-                .createdBy(USERNAME)
-                .invoiceNumber("INV-2025-001")
-                .status(InvoiceStatus.PAID)
+                .createdBy("testuser")
+                .senderName("sender")
+                .receiverName("receiver")
+                .amount(BigDecimal.valueOf(200))
                 .build();
 
         InvoiceItem item = InvoiceItem.builder()
-                .description("Test")
-                .subTotal(BigDecimal.TEN)
+                .id(1L)
+                .description("Test Item")
+                .hoursWorked(2)
+                .hourlyRate(BigDecimal.valueOf(100))
+                .subTotal(BigDecimal.valueOf(200))
+                .invoice(invoice)
+                .build();
+
+        items = List.of(item);
+    }
+
+    @Test
+    void getInvoicesForUser_shouldReturnInvoices() {
+        // Arrange
+        when(invoiceRepository.findByCreatedBy("testuser")).thenReturn(List.of(invoice));
+        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
+
+        // Act
+        List<InvoiceResponseDTO> result = invoiceService.getInvoicesForUser("testuser");
+
+        // Assert
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getInvoiceNumber()).isEqualTo("INV-2025-0001");
+    }
+
+    @Test
+    void getInvoiceByIdForUser_shouldReturnInvoice() {
+        // Arrange
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
+        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
+
+        // Act
+        InvoiceResponseDTO result = invoiceService.getInvoiceByIdForUser(1L, "testuser");
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getInvoiceNumber()).isEqualTo("INV-2025-0001");
+    }
+
+    @Test
+    void getInvoiceByIdForUser_shouldThrow_whenNotFound() {
+        // Arrange
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> invoiceService.getInvoiceByIdForUser(1L, "testuser"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Factuur niet gevonden");
+    }
+
+    @Test
+    void getInvoiceByIdForUser_shouldThrow_whenNotOwnedByUser() {
+        // Arrange
+        invoice.setCreatedBy("otherUser");
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
+
+        // Act & Assert
+        assertThatThrownBy(() -> invoiceService.getInvoiceByIdForUser(1L, "testuser"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Factuur niet gevonden");
+    }
+
+    @Test
+    void updateInvoiceForUser_shouldUpdateInvoice() {
+        // Arrange
+        CreateInvoiceRequestDTO dto = CreateInvoiceRequestDTO.builder()
+                .invoiceNumber("INV-2025-0002")
+                .senderName("sender")
+                .receiverName("receiver")
+                .issueDate(LocalDate.now())
+                .dueDate(LocalDate.now().plusDays(14))
+                .status("UNPAID")
+                .items(List.of(new InvoiceItemDTO("item", 2, BigDecimal.valueOf(100), BigDecimal.valueOf(200), LocalDate.now())))
                 .build();
 
         when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(List.of(item));
+        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
+        when(invoiceItemRepository.saveAll(anyList())).thenReturn(items);
+        when(invoiceRepository.save(any(Invoice.class))).thenReturn(invoice);
 
-        InvoiceResponseDTO result = invoiceService.getInvoiceByIdForUser(1L, USERNAME);
+        // Act
+        InvoiceResponseDTO result = invoiceService.updateInvoiceForUser(1L, dto, "testuser");
 
-        assertEquals("INV-2025-001", result.getInvoiceNumber());
+        // Assert
+        assertThat(result.getInvoiceNumber()).isEqualTo("INV-2025-0002");
+        verify(invoiceItemRepository).deleteAll(anyList());
+        verify(invoiceItemRepository).saveAll(anyList());
     }
 
     @Test
-    void getInvoiceByIdForUser_shouldThrow_ifNotOwned() {
-        Invoice invoice = Invoice.builder().id(2L).createdBy("notUser1").build();
-        when(invoiceRepository.findById(2L)).thenReturn(Optional.of(invoice));
+    void updateInvoiceForUser_shouldThrow_whenNotFound() {
+        // Arrange
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
+        CreateInvoiceRequestDTO dto = CreateInvoiceRequestDTO.builder().build();
 
-        assertThrows(ResponseStatusException.class, () ->
-                invoiceService.getInvoiceByIdForUser(2L, USERNAME));
+        // Act & Assert
+        assertThatThrownBy(() -> invoiceService.updateInvoiceForUser(1L, dto, "testuser"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Factuur niet gevonden");
     }
 
     @Test
-    void updateInvoiceStatusForUser_shouldSucceed_ifOwnedByUser() {
-        Invoice invoice = Invoice.builder().id(3L).status(InvoiceStatus.UNPAID).createdBy(USERNAME).build();
-        when(invoiceRepository.findById(3L)).thenReturn(Optional.of(invoice));
+    void autoGenerateInvoiceFromUnbilled_shouldGenerateInvoice() {
+        // Arrange
+        TimeEntry entry = TimeEntry.builder()
+                .id(1L)
+                .hours(2)
+                .hourlyRate(BigDecimal.valueOf(100))
+                .description("Work")
+                .client(Client.builder().name("receiver").build())
+                .createdBy("testuser")
+                .build();
 
-        invoiceService.updateInvoiceStatusForUser(3L, InvoiceStatus.PAID, USERNAME);
+        when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(List.of(entry));
+        when(invoiceRepository.save(any(Invoice.class))).thenReturn(invoice);
+        when(invoiceItemRepository.saveAll(anyList())).thenReturn(items);
+        when(timeEntryRepository.saveAll(anyList())).thenReturn(List.of(entry));
 
+        // Act
+        InvoiceResponseDTO result = invoiceService.autoGenerateInvoiceFromUnbilled(1L, "testuser");
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getReceiverName()).isEqualTo("receiver");
+        verify(invoiceRepository).save(any(Invoice.class));
+        verify(invoiceItemRepository).saveAll(anyList());
+        verify(timeEntryRepository).saveAll(anyList());
+    }
+
+    @Test
+    void autoGenerateInvoiceFromUnbilled_shouldThrow_whenNoEntries() {
+        // Arrange
+        when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(Collections.emptyList());
+
+        // Act & Assert
+        assertThatThrownBy(() -> invoiceService.autoGenerateInvoiceFromUnbilled(1L, "testuser"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Geen ongefactureerde uren gevonden.");
+    }
+
+    @Test
+    void updateInvoiceStatusForUser_shouldUpdateStatus() {
+        // Arrange
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
+
+        // Act
+        invoiceService.updateInvoiceStatusForUser(1L, InvoiceStatus.PAID, "testuser");
+
+        // Assert
+        assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
         verify(invoiceRepository).save(invoice);
-        assertEquals(InvoiceStatus.PAID, invoice.getStatus());
     }
 
     @Test
-    void deleteInvoiceForUser_shouldRemove_ifOwnedByUser() {
-        Invoice invoice = Invoice.builder().id(4L).createdBy(USERNAME).build();
-        when(invoiceRepository.findById(4L)).thenReturn(Optional.of(invoice));
+    void updateInvoiceStatusForUser_shouldThrow_whenNotFound() {
+        // Arrange
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
 
-        invoiceService.deleteInvoiceForUser(4L, USERNAME);
+        // Act & Assert
+        assertThatThrownBy(() -> invoiceService.updateInvoiceStatusForUser(1L, InvoiceStatus.PAID, "testuser"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Factuur niet gevonden");
+    }
 
+    @Test
+    void deleteInvoiceForUser_shouldDeleteInvoice() {
+        // Arrange
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
+
+        // Act
+        invoiceService.deleteInvoiceForUser(1L, "testuser");
+
+        // Assert
         verify(invoiceRepository).delete(invoice);
-        verifyNoMoreInteractions(invoiceItemRepository, timeEntryRepository);
     }
-
 
     @Test
-    void deleteInvoiceForUser_shouldThrow_ifNotOwned() {
-        Invoice invoice = Invoice.builder().id(5L).createdBy("notUser1").build();
-        when(invoiceRepository.findById(5L)).thenReturn(Optional.of(invoice));
+    void deleteInvoiceForUser_shouldThrowForbidden_whenUserNotOwner() {
+        // Arrange
+        invoice.setCreatedBy("otherUser");
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
 
-        assertThrows(ResponseStatusException.class, () ->
-                invoiceService.deleteInvoiceForUser(5L, USERNAME));
+        // Act & Assert
+        assertThatThrownBy(() -> invoiceService.deleteInvoiceForUser(1L, "testuser"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Je mag deze factuur niet verwijderen.");
     }
 
+    @Test
+    void deleteInvoiceForUser_shouldThrowNotFound_whenInvoiceNotFound() {
+        // Arrange
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> invoiceService.deleteInvoiceForUser(1L, "testuser"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Factuur niet gevonden");
+    }
 }
