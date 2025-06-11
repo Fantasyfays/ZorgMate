@@ -69,38 +69,30 @@ class InvoiceServiceImplTest {
 
     @Test
     void getInvoicesForUser_shouldReturnInvoices() {
-        // Arrange
         when(invoiceRepository.findByCreatedBy("testuser")).thenReturn(List.of(invoice));
         when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
 
-        // Act
         List<InvoiceResponseDTO> result = invoiceService.getInvoicesForUser("testuser");
 
-        // Assert
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getInvoiceNumber()).isEqualTo("INV-2025-0001");
     }
 
     @Test
     void getInvoiceByIdForUser_shouldReturnInvoice() {
-        // Arrange
         when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
         when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
 
-        // Act
         InvoiceResponseDTO result = invoiceService.getInvoiceByIdForUser(1L, "testuser");
 
-        // Assert
         assertThat(result).isNotNull();
         assertThat(result.getInvoiceNumber()).isEqualTo("INV-2025-0001");
     }
 
     @Test
     void getInvoiceByIdForUser_shouldThrow_whenNotFound() {
-        // Arrange
         when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThatThrownBy(() -> invoiceService.getInvoiceByIdForUser(1L, "testuser"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Factuur niet gevonden");
@@ -108,11 +100,9 @@ class InvoiceServiceImplTest {
 
     @Test
     void getInvoiceByIdForUser_shouldThrow_whenNotOwnedByUser() {
-        // Arrange
         invoice.setCreatedBy("otherUser");
         when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
 
-        // Act & Assert
         assertThatThrownBy(() -> invoiceService.getInvoiceByIdForUser(1L, "testuser"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Factuur niet gevonden");
@@ -120,7 +110,6 @@ class InvoiceServiceImplTest {
 
     @Test
     void updateInvoiceForUser_shouldUpdateInvoice() {
-        // Arrange
         CreateInvoiceRequestDTO dto = CreateInvoiceRequestDTO.builder()
                 .invoiceNumber("INV-2025-0002")
                 .senderName("sender")
@@ -136,10 +125,8 @@ class InvoiceServiceImplTest {
         when(invoiceItemRepository.saveAll(anyList())).thenReturn(items);
         when(invoiceRepository.save(any(Invoice.class))).thenReturn(invoice);
 
-        // Act
         InvoiceResponseDTO result = invoiceService.updateInvoiceForUser(1L, dto, "testuser");
 
-        // Assert
         assertThat(result.getInvoiceNumber()).isEqualTo("INV-2025-0002");
         verify(invoiceItemRepository).deleteAll(anyList());
         verify(invoiceItemRepository).saveAll(anyList());
@@ -147,11 +134,9 @@ class InvoiceServiceImplTest {
 
     @Test
     void updateInvoiceForUser_shouldThrow_whenNotFound() {
-        // Arrange
         when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
         CreateInvoiceRequestDTO dto = CreateInvoiceRequestDTO.builder().build();
 
-        // Act & Assert
         assertThatThrownBy(() -> invoiceService.updateInvoiceForUser(1L, dto, "testuser"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Factuur niet gevonden");
@@ -159,7 +144,6 @@ class InvoiceServiceImplTest {
 
     @Test
     void autoGenerateInvoiceFromUnbilled_shouldGenerateInvoice() {
-        // Arrange
         TimeEntry entry = TimeEntry.builder()
                 .id(1L)
                 .hours(2)
@@ -174,10 +158,8 @@ class InvoiceServiceImplTest {
         when(invoiceItemRepository.saveAll(anyList())).thenReturn(items);
         when(timeEntryRepository.saveAll(anyList())).thenReturn(List.of(entry));
 
-        // Act
         InvoiceResponseDTO result = invoiceService.autoGenerateInvoiceFromUnbilled(1L, "testuser");
 
-        // Assert
         assertThat(result).isNotNull();
         assertThat(result.getReceiverName()).isEqualTo("receiver");
         verify(invoiceRepository).save(any(Invoice.class));
@@ -187,10 +169,8 @@ class InvoiceServiceImplTest {
 
     @Test
     void autoGenerateInvoiceFromUnbilled_shouldThrow_whenNoEntries() {
-        // Arrange
         when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(Collections.emptyList());
 
-        // Act & Assert
         assertThatThrownBy(() -> invoiceService.autoGenerateInvoiceFromUnbilled(1L, "testuser"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Geen ongefactureerde uren gevonden.");
@@ -198,23 +178,18 @@ class InvoiceServiceImplTest {
 
     @Test
     void updateInvoiceStatusForUser_shouldUpdateStatus() {
-        // Arrange
         when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
 
-        // Act
         invoiceService.updateInvoiceStatusForUser(1L, InvoiceStatus.PAID, "testuser");
 
-        // Assert
         assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
         verify(invoiceRepository).save(invoice);
     }
 
     @Test
     void updateInvoiceStatusForUser_shouldThrow_whenNotFound() {
-        // Arrange
         when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThatThrownBy(() -> invoiceService.updateInvoiceStatusForUser(1L, InvoiceStatus.PAID, "testuser"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Factuur niet gevonden");
@@ -222,23 +197,18 @@ class InvoiceServiceImplTest {
 
     @Test
     void deleteInvoiceForUser_shouldDeleteInvoice() {
-        // Arrange
         when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
 
-        // Act
         invoiceService.deleteInvoiceForUser(1L, "testuser");
 
-        // Assert
         verify(invoiceRepository).delete(invoice);
     }
 
     @Test
     void deleteInvoiceForUser_shouldThrowForbidden_whenUserNotOwner() {
-        // Arrange
         invoice.setCreatedBy("otherUser");
         when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
 
-        // Act & Assert
         assertThatThrownBy(() -> invoiceService.deleteInvoiceForUser(1L, "testuser"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Je mag deze factuur niet verwijderen.");
@@ -246,10 +216,8 @@ class InvoiceServiceImplTest {
 
     @Test
     void deleteInvoiceForUser_shouldThrowNotFound_whenInvoiceNotFound() {
-        // Arrange
         when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThatThrownBy(() -> invoiceService.deleteInvoiceForUser(1L, "testuser"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Factuur niet gevonden");
