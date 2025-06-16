@@ -11,32 +11,37 @@ import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import com.example.zorgmate.service.interfaces.InvoiceService;
-import org.springframework.data.crossstore.ChangeSetPersister;
+import com.example.zorgmate.websocket.InvoiceWebSocketHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
 public class InvoiceServiceImpl implements InvoiceService {
 
+    private static final Logger logger = LoggerFactory.getLogger(InvoiceServiceImpl.class);
+
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemRepository invoiceItemRepository;
     private final TimeEntryRepository timeEntryRepository;
+    private final InvoiceWebSocketHandler webSocketHandler;
 
     public InvoiceServiceImpl(InvoiceRepository invoiceRepository,
                               InvoiceItemRepository invoiceItemRepository,
-                              TimeEntryRepository timeEntryRepository) {
+                              TimeEntryRepository timeEntryRepository,
+                              InvoiceWebSocketHandler webSocketHandler) {
         this.invoiceRepository = invoiceRepository;
         this.invoiceItemRepository = invoiceItemRepository;
         this.timeEntryRepository = timeEntryRepository;
+        this.webSocketHandler = webSocketHandler;
     }
 
     @Override
@@ -81,6 +86,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setAmount(totalAmount);
         invoiceRepository.save(invoice);
 
+        try {
+            webSocketHandler.broadcastUpdate("factuur_bijgewerkt:" + invoice.getId());
+        } catch (Exception e) {
+            logger.error("WebSocket broadcast failed for updated invoice {}", invoice.getId(), e);
+        }
+
         return mapToDTO(invoice, updatedItems);
     }
 
@@ -93,16 +104,14 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Je mag deze factuur niet verwijderen.");
         }
 
-        System.out.println("🧪 DELETE Factuur ID: " + invoice.getId());
-        System.out.println("🧪 Ingelogde gebruiker: '" + username + "'");
-        System.out.println("🧪 Factuur aangemaakt door: '" + invoice.getCreatedBy() + "'");
-
         invoiceRepository.delete(invoice);
 
-        System.out.println("✅ Factuur + gekoppelde items en timeEntries verwijderd.");
+        try {
+            webSocketHandler.broadcastUpdate("factuur_verwijderd:" + invoiceId);
+        } catch (Exception e) {
+            logger.error("WebSocket broadcast failed for deleted invoice {}", invoiceId, e);
+        }
     }
-
-
 
     @Override
     public void updateInvoiceStatusForUser(Long id, InvoiceStatus status, String username) {
@@ -160,8 +169,15 @@ public class InvoiceServiceImpl implements InvoiceService {
         for (TimeEntry entry : entries) entry.setInvoice(invoice);
         timeEntryRepository.saveAll(entries);
 
+        try {
+            webSocketHandler.broadcastUpdate("factuur_gegenereerd:" + invoice.getId());
+        } catch (Exception e) {
+            logger.error("WebSocket broadcast failed for auto-generated invoice {}", invoice.getId(), e);
+        }
+
         return mapToDTO(invoice, items);
     }
+
     private InvoiceResponseDTO mapToDTO(Invoice invoice, List<InvoiceItem> items) {
         List<InvoiceItemDTO> itemDTOs = items.stream()
                 .map(item -> new InvoiceItemDTO(
@@ -208,5 +224,4 @@ public class InvoiceServiceImpl implements InvoiceService {
         long count = invoiceRepository.count() + 1;
         return "INV-" + LocalDate.now().getYear() + "-" + String.format("%04d", count);
     }
-
 }

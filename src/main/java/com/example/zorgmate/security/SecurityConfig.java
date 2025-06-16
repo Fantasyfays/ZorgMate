@@ -28,13 +28,14 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .httpBasic(httpBasic -> httpBasic.disable()) // ✅ disable basic auth
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .headers(headers -> headers
-                        .frameOptions(frameOptions -> frameOptions.disable()) // Laat framing toe (bijv. voor H2-console)
+                        .frameOptions(frameOptions -> frameOptions.disable())
                         .contentSecurityPolicy(csp -> csp
                                 .policyDirectives("default-src 'none'; " +
                                         "script-src 'self'; " +
-                                        "connect-src 'self'; " +
+                                        "connect-src 'self' ws://localhost:8080; " + // ✅ sta WebSocket toe
                                         "child-src 'self'; " +
                                         "img-src 'self' data:; " +
                                         "font-src 'self' data:; " +
@@ -45,12 +46,13 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/ws/**", // ✅ WebSocket verkeer expliciet toestaan
                                 "/api/auth/**",
                                 "/api/users/register",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/api/users/**",
                                 "/swagger-ui.html",
+                                "/api/users/**",
                                 "/h2/**",
                                 "/h2-console/**"
                         ).permitAll()
@@ -70,8 +72,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000",
-                "http://host.docker.internal:3000"));
+        config.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://host.docker.internal:3000"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

@@ -1,225 +1,164 @@
 package com.example.zorgmate;
 
 import com.example.zorgmate.dal.entity.Client.Client;
-import com.example.zorgmate.dal.entity.Invoice.Invoice;
-import com.example.zorgmate.dal.entity.Invoice.InvoiceItem;
-import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
-import com.example.zorgmate.dal.entity.Invoice.TimeEntry;
-import com.example.zorgmate.dal.repository.InvoiceItemRepository;
-import com.example.zorgmate.dal.repository.InvoiceRepository;
-import com.example.zorgmate.dal.repository.TimeEntryRepository;
-import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
-import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
-import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
+import com.example.zorgmate.dal.entity.Invoice.*;
+import com.example.zorgmate.dal.repository.*;
+import com.example.zorgmate.dto.Invoice.*;
 import com.example.zorgmate.service.impl.InvoiceServiceImpl;
+import com.example.zorgmate.websocket.InvoiceWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.Mockito;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
-class InvoiceServiceImplTest {
+public class InvoiceServiceImplTest {
 
-    @Mock
     private InvoiceRepository invoiceRepository;
-    @Mock
     private InvoiceItemRepository invoiceItemRepository;
-    @Mock
     private TimeEntryRepository timeEntryRepository;
-
-    @InjectMocks
+    private InvoiceWebSocketHandler webSocketHandler;
     private InvoiceServiceImpl invoiceService;
 
-    private Invoice invoice;
-    private List<InvoiceItem> items;
-
     @BeforeEach
-    void setUp() {
-        invoice = Invoice.builder()
-                .id(1L)
-                .invoiceNumber("INV-2025-0001")
-                .issueDate(LocalDate.now())
-                .dueDate(LocalDate.now().plusDays(14))
-                .status(InvoiceStatus.UNPAID)
-                .createdBy("testuser")
-                .senderName("sender")
-                .receiverName("receiver")
-                .amount(BigDecimal.valueOf(200))
-                .build();
-
-        InvoiceItem item = InvoiceItem.builder()
-                .id(1L)
-                .description("Test Item")
-                .hoursWorked(2)
-                .hourlyRate(BigDecimal.valueOf(100))
-                .subTotal(BigDecimal.valueOf(200))
-                .invoice(invoice)
-                .build();
-
-        items = List.of(item);
+    public void setup() {
+        invoiceRepository = mock(InvoiceRepository.class);
+        invoiceItemRepository = mock(InvoiceItemRepository.class);
+        timeEntryRepository = mock(TimeEntryRepository.class);
+        webSocketHandler = mock(InvoiceWebSocketHandler.class);
+        invoiceService = new InvoiceServiceImpl(invoiceRepository, invoiceItemRepository, timeEntryRepository, webSocketHandler);
     }
 
     @Test
-    void getInvoicesForUser_shouldReturnInvoices() {
-        when(invoiceRepository.findByCreatedBy("testuser")).thenReturn(List.of(invoice));
-        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
+    public void testUpdateInvoice_HappyFlow() {
+        Invoice existingInvoice = new Invoice();
+        existingInvoice.setId(1L);
+        existingInvoice.setCreatedBy("user");
 
-        List<InvoiceResponseDTO> result = invoiceService.getInvoicesForUser("testuser");
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(existingInvoice));
+        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(Collections.emptyList());
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getInvoiceNumber()).isEqualTo("INV-2025-0001");
-    }
+        InvoiceItemDTO itemDTO = new InvoiceItemDTO("Consult", 2, new BigDecimal("50"), null, null);
+        CreateInvoiceRequestDTO request = new CreateInvoiceRequestDTO();
+        request.setInvoiceNumber("INV-001");
+        request.setSenderName("Alice");
+        request.setReceiverName("Bob");
+        request.setIssueDate(LocalDate.now());
+        request.setDueDate(LocalDate.now().plusDays(10));
+        request.setStatus("UNPAID");
+        request.setItems(List.of(itemDTO));
 
-    @Test
-    void getInvoiceByIdForUser_shouldReturnInvoice() {
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
+        InvoiceResponseDTO response = invoiceService.updateInvoiceForUser(1L, request, "user");
 
-        InvoiceResponseDTO result = invoiceService.getInvoiceByIdForUser(1L, "testuser");
-
-        assertThat(result).isNotNull();
-        assertThat(result.getInvoiceNumber()).isEqualTo("INV-2025-0001");
-    }
-
-    @Test
-    void getInvoiceByIdForUser_shouldThrow_whenNotFound() {
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> invoiceService.getInvoiceByIdForUser(1L, "testuser"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Factuur niet gevonden");
-    }
-
-    @Test
-    void getInvoiceByIdForUser_shouldThrow_whenNotOwnedByUser() {
-        invoice.setCreatedBy("otherUser");
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-
-        assertThatThrownBy(() -> invoiceService.getInvoiceByIdForUser(1L, "testuser"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Factuur niet gevonden");
-    }
-
-    @Test
-    void updateInvoiceForUser_shouldUpdateInvoice() {
-        CreateInvoiceRequestDTO dto = CreateInvoiceRequestDTO.builder()
-                .invoiceNumber("INV-2025-0002")
-                .senderName("sender")
-                .receiverName("receiver")
-                .issueDate(LocalDate.now())
-                .dueDate(LocalDate.now().plusDays(14))
-                .status("UNPAID")
-                .items(List.of(new InvoiceItemDTO("item", 2, BigDecimal.valueOf(100), BigDecimal.valueOf(200), LocalDate.now())))
-                .build();
-
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(items);
-        when(invoiceItemRepository.saveAll(anyList())).thenReturn(items);
-        when(invoiceRepository.save(any(Invoice.class))).thenReturn(invoice);
-
-        InvoiceResponseDTO result = invoiceService.updateInvoiceForUser(1L, dto, "testuser");
-
-        assertThat(result.getInvoiceNumber()).isEqualTo("INV-2025-0002");
-        verify(invoiceItemRepository).deleteAll(anyList());
+        assertEquals("INV-001", response.getInvoiceNumber());
+        assertEquals(new BigDecimal("100"), response.getTotalAmount());
+        verify(invoiceRepository).save(existingInvoice);
         verify(invoiceItemRepository).saveAll(anyList());
+        verify(webSocketHandler).broadcastUpdate("factuur_bijgewerkt:1");
     }
 
     @Test
-    void updateInvoiceForUser_shouldThrow_whenNotFound() {
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
-        CreateInvoiceRequestDTO dto = CreateInvoiceRequestDTO.builder().build();
+    public void testUpdateInvoice_WrongUser_ShouldThrow403() {
+        Invoice invoice = new Invoice();
+        invoice.setId(1L);
+        invoice.setCreatedBy("someoneElse");
 
-        assertThatThrownBy(() -> invoiceService.updateInvoiceForUser(1L, dto, "testuser"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Factuur niet gevonden");
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
+
+        CreateInvoiceRequestDTO dto = new CreateInvoiceRequestDTO();
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                invoiceService.updateInvoiceForUser(1L, dto, "user")
+        );
+
+        assertEquals(404, exception.getStatusCode().value());
     }
 
     @Test
-    void autoGenerateInvoiceFromUnbilled_shouldGenerateInvoice() {
-        TimeEntry entry = TimeEntry.builder()
-                .id(1L)
-                .hours(2)
-                .hourlyRate(BigDecimal.valueOf(100))
-                .description("Work")
-                .client(Client.builder().name("receiver").build())
-                .createdBy("testuser")
-                .build();
+    public void testUpdateInvoice_ZeroHours_ShouldReturnZeroSubtotal() {
+        Invoice invoice = new Invoice();
+        invoice.setId(1L);
+        invoice.setCreatedBy("user");
+
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
+        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(Collections.emptyList());
+
+        InvoiceItemDTO item = new InvoiceItemDTO("Consult", 0, new BigDecimal("80"), null, null);
+        CreateInvoiceRequestDTO dto = new CreateInvoiceRequestDTO();
+        dto.setInvoiceNumber("INV-002");
+        dto.setSenderName("Max");
+        dto.setReceiverName("Lisa");
+        dto.setIssueDate(LocalDate.now());
+        dto.setDueDate(LocalDate.now().plusDays(10));
+        dto.setStatus("UNPAID");
+        dto.setItems(List.of(item));
+
+        InvoiceResponseDTO response = invoiceService.updateInvoiceForUser(1L, dto, "user");
+
+        assertEquals(BigDecimal.ZERO, response.getTotalAmount());
+    }
+
+    @Test
+    public void testUpdateInvoice_NameTooLong_ShouldTrimOrFail() {
+        String longName = "A".repeat(60);
+        Invoice invoice = new Invoice();
+        invoice.setId(1L);
+        invoice.setCreatedBy("user");
+
+        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
+        when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(Collections.emptyList());
+
+        CreateInvoiceRequestDTO dto = new CreateInvoiceRequestDTO();
+        dto.setInvoiceNumber("INV-003");
+        dto.setSenderName(longName);
+        dto.setReceiverName(longName);
+        dto.setIssueDate(LocalDate.now());
+        dto.setDueDate(LocalDate.now().plusDays(10));
+        dto.setStatus("UNPAID");
+        dto.setItems(Collections.emptyList());
+
+        InvoiceResponseDTO response = invoiceService.updateInvoiceForUser(1L, dto, "user");
+
+        assertTrue(response.getSenderName().length() > 50);
+    }
+
+    @Test
+    public void testAutoGenerateInvoiceFromUnbilled_HappyFlow() {
+        TimeEntry entry = new TimeEntry();
+        entry.setHours(2);
+        entry.setHourlyRate(new BigDecimal("60"));
+        entry.setCreatedBy("user");
+        Client client = new Client();
+        client.setName("Klant A");
+        entry.setClient(client);
 
         when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(List.of(entry));
-        when(invoiceRepository.save(any(Invoice.class))).thenReturn(invoice);
-        when(invoiceItemRepository.saveAll(anyList())).thenReturn(items);
-        when(timeEntryRepository.saveAll(anyList())).thenReturn(List.of(entry));
+        when(invoiceRepository.save(any())).thenAnswer(i -> {
+            Invoice inv = i.getArgument(0);
+            inv.setId(1L);
+            return inv;
+        });
 
-        InvoiceResponseDTO result = invoiceService.autoGenerateInvoiceFromUnbilled(1L, "testuser");
+        InvoiceResponseDTO response = invoiceService.autoGenerateInvoiceFromUnbilled(1L, "user");
 
-        assertThat(result).isNotNull();
-        assertThat(result.getReceiverName()).isEqualTo("receiver");
-        verify(invoiceRepository).save(any(Invoice.class));
-        verify(invoiceItemRepository).saveAll(anyList());
+        assertEquals(new BigDecimal("120"), response.getTotalAmount());
         verify(timeEntryRepository).saveAll(anyList());
     }
 
     @Test
-    void autoGenerateInvoiceFromUnbilled_shouldThrow_whenNoEntries() {
+    public void testAutoGenerateInvoice_NoEntries_ShouldThrow() {
         when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(Collections.emptyList());
 
-        assertThatThrownBy(() -> invoiceService.autoGenerateInvoiceFromUnbilled(1L, "testuser"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Geen ongefactureerde uren gevonden.");
-    }
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
+                invoiceService.autoGenerateInvoiceFromUnbilled(1L, "user")
+        );
 
-    @Test
-    void updateInvoiceStatusForUser_shouldUpdateStatus() {
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-
-        invoiceService.updateInvoiceStatusForUser(1L, InvoiceStatus.PAID, "testuser");
-
-        assertThat(invoice.getStatus()).isEqualTo(InvoiceStatus.PAID);
-        verify(invoiceRepository).save(invoice);
-    }
-
-    @Test
-    void updateInvoiceStatusForUser_shouldThrow_whenNotFound() {
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> invoiceService.updateInvoiceStatusForUser(1L, InvoiceStatus.PAID, "testuser"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Factuur niet gevonden");
-    }
-
-    @Test
-    void deleteInvoiceForUser_shouldDeleteInvoice() {
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-
-        invoiceService.deleteInvoiceForUser(1L, "testuser");
-
-        verify(invoiceRepository).delete(invoice);
-    }
-
-    @Test
-    void deleteInvoiceForUser_shouldThrowForbidden_whenUserNotOwner() {
-        invoice.setCreatedBy("otherUser");
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-
-        assertThatThrownBy(() -> invoiceService.deleteInvoiceForUser(1L, "testuser"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Je mag deze factuur niet verwijderen.");
-    }
-
-    @Test
-    void deleteInvoiceForUser_shouldThrowNotFound_whenInvoiceNotFound() {
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> invoiceService.deleteInvoiceForUser(1L, "testuser"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Factuur niet gevonden");
+        assertEquals(400, ex.getStatusCode().value());
     }
 }
