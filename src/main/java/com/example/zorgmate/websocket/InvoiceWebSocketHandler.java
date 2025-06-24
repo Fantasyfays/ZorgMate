@@ -28,22 +28,22 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
 
             try {
                 if (!jwtUtil.validateToken(token)) {
-                    System.out.println("❌ Ongeldig token ontvangen via WebSocket.");
+                    System.out.println(" Ongeldig token ontvangen via WebSocket.");
                     session.close();
                     return;
                 }
 
                 String username = jwtUtil.extractUsername(token);
-                System.out.println("✅ WebSocket verbinding geauthenticeerd voor gebruiker: " + username);
+                System.out.println("WebSocket verbinding geauthenticeerd voor gebruiker: " + username);
 
             } catch (Exception e) {
-                System.out.println("❌ Token validatie of extractie mislukt: " + e.getMessage());
+                System.out.println("Token validatie of extractie mislukt: " + e.getMessage());
                 session.close();
                 return;
             }
 
         } else {
-            System.out.println("❌ Geen token gevonden in WebSocket request.");
+            System.out.println(" Geen token gevonden in WebSocket request.");
             session.close();
             return;
         }
@@ -60,7 +60,7 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
         sessions.remove(session);
-        System.out.println("❌ Verbinding gesloten: " + session.getId());
+        System.out.println("Verbinding gesloten: " + session.getId());
     }
 
     public void broadcastUpdate(String message) {
@@ -70,7 +70,7 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
                     session.sendMessage(new TextMessage(message));
                 }
             } catch (Exception e) {
-                System.err.println("❌ Fout bij verzenden via WebSocket: " + e.getMessage());
+                System.err.println("Fout bij verzenden via WebSocket: " + e.getMessage());
             }
         }
     }

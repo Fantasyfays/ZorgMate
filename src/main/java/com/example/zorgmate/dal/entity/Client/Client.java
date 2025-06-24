@@ -21,4 +21,10 @@ public class Client {
 
     @Column(nullable = false)
     private String createdBy;
+
+    private String postcode;
+    private String houseNumber;
+    private String street;
+    private String city;
+
 }

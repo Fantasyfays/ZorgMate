@@ -1,10 +1,12 @@
 package com.example.zorgmate.controller;
 
+import com.example.zorgmate.dal.entity.Invoice.Invoice;
 import com.example.zorgmate.dto.Invoice.AutoInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import com.example.zorgmate.service.interfaces.InvoiceService;
 import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
+import com.example.zorgmate.service.result.DeleteResult;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -35,7 +38,13 @@ public class InvoiceController {
     @GetMapping("/{id}")
     public ResponseEntity<InvoiceResponseDTO> getInvoiceById(@PathVariable Long id, Authentication authentication) {
         String username = authentication.getName();
-        return ResponseEntity.ok(invoiceService.getInvoiceByIdForUser(id, username));
+        InvoiceResponseDTO response = invoiceService.getInvoiceByIdForUser(id, username);
+
+        if (response == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")
@@ -48,7 +57,13 @@ public class InvoiceController {
         }
 
         String username = authentication.getName();
-        return ResponseEntity.ok(invoiceService.updateInvoiceForUser(id, dto, username));
+        InvoiceResponseDTO updated = invoiceService.updateInvoiceForUser(id, dto, username);
+
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(updated);
     }
 
     @PatchMapping("/{id}/status/{status}")
@@ -56,28 +71,49 @@ public class InvoiceController {
                                                       @PathVariable InvoiceStatus status,
                                                       Authentication authentication) {
         String username = authentication.getName();
+        InvoiceResponseDTO invoice = invoiceService.getInvoiceByIdForUser(id, username);
+
+        if (invoice == null) {
+            return ResponseEntity.notFound().build();
+        }
+
         invoiceService.updateInvoiceStatusForUser(id, status, username);
         return ResponseEntity.ok("Status bijgewerkt naar " + status);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable Long id, Authentication authentication) {
-        System.out.println("DELETE-request door gebruiker: " + authentication.getName());
-        System.out.println("DELETE-request voor factuur ID " + id + " door gebruiker: " + authentication.getName());
-        invoiceService.deleteInvoiceForUser(id, authentication.getName());
-        return ResponseEntity.noContent().build();
+        String username = authentication.getName();
+        DeleteResult result = invoiceService.deleteInvoiceForUser(id, username);
 
+        return switch (result) {
+            case NOT_FOUND -> ResponseEntity.notFound().build();
+            case FORBIDDEN -> ResponseEntity.status(403).build();
+            case DELETED -> ResponseEntity.noContent().build();
+        };
     }
+
 
     @PostMapping("/auto-generate")
-    public ResponseEntity<InvoiceResponseDTO> autoGenerateInvoice(@Valid @RequestBody AutoInvoiceRequestDTO dto,
-                                                                  Authentication authentication) {
+    public ResponseEntity<?> autoGenerateInvoice(@Valid @RequestBody AutoInvoiceRequestDTO dto,
+                                                 Authentication authentication) {
         String username = authentication.getName();
-        return ResponseEntity.ok(invoiceService.autoGenerateInvoiceFromUnbilled(dto.getClientId(), username));
+        InvoiceResponseDTO response = invoiceService.autoGenerateInvoiceFromUnbilled(dto.getClientId(), username);
+
+        if (response == null) {
+            return ResponseEntity.badRequest().body("Geen ongefactureerde uren gevonden.");
+        }
+
+        return ResponseEntity.ok(response);
     }
+
 
     private Map<String, String> getValidationErrors(BindingResult result) {
         return result.getFieldErrors().stream()
-                .collect(Collectors.toMap(FieldError::getField, FieldError::getDefaultMessage));
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        error -> Objects.requireNonNullElse(error.getDefaultMessage(), "Onbekende fout")
+                ));
     }
+
 }

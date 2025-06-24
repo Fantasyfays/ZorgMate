@@ -11,12 +11,11 @@ import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import com.example.zorgmate.service.interfaces.InvoiceService;
+import com.example.zorgmate.service.result.DeleteResult;
 import com.example.zorgmate.websocket.InvoiceWebSocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -58,7 +57,12 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceResponseDTO getInvoiceByIdForUser(Long id, String username) {
         Invoice invoice = invoiceRepository.findById(id)
                 .filter(i -> i.getCreatedBy().equals(username))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
+                .orElse(null);
+
+        if (invoice == null) {
+            logger.warn("Factuur niet gevonden of geen toegang: id={}, gebruiker={}", id, username);
+            return null;
+        }
 
         List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
         return mapToDTO(invoice, items);
@@ -68,7 +72,12 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceResponseDTO updateInvoiceForUser(Long id, CreateInvoiceRequestDTO dto, String username) {
         Invoice invoice = invoiceRepository.findById(id)
                 .filter(i -> i.getCreatedBy().equals(username))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
+                .orElse(null);
+
+        if (invoice == null) {
+            logger.warn("Kan factuur niet bijwerken: id={} bestaat niet of toegang geweigerd voor {}", id, username);
+            return null;
+        }
 
         invoice.setInvoiceNumber(dto.getInvoiceNumber());
         invoice.setSenderName(dto.getSenderName());
@@ -96,12 +105,17 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public void deleteInvoiceForUser(Long invoiceId, String username) {
-        Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
+    public DeleteResult deleteInvoiceForUser(Long invoiceId, String username) {
+        Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
+
+        if (invoice == null) {
+            logger.warn("Factuur niet gevonden: id={}, gebruiker={}", invoiceId, username);
+            return DeleteResult.NOT_FOUND;
+        }
 
         if (!invoice.getCreatedBy().equals(username)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Je mag deze factuur niet verwijderen.");
+            logger.warn("Gebruiker {} heeft geen toegang tot factuur id={}", username, invoiceId);
+            return DeleteResult.FORBIDDEN;
         }
 
         invoiceRepository.delete(invoice);
@@ -111,13 +125,22 @@ public class InvoiceServiceImpl implements InvoiceService {
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for deleted invoice {}", invoiceId, e);
         }
+
+        return DeleteResult.DELETED;
     }
+
 
     @Override
     public void updateInvoiceStatusForUser(Long id, InvoiceStatus status, String username) {
         Invoice invoice = invoiceRepository.findById(id)
                 .filter(i -> i.getCreatedBy().equals(username))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Factuur niet gevonden"));
+                .orElse(null);
+
+        if (invoice == null) {
+            logger.warn("Kan status niet bijwerken: factuur niet gevonden of geen toegang, id={}, gebruiker={}", id, username);
+            return;
+        }
+
         invoice.setStatus(status);
         invoiceRepository.save(invoice);
     }
@@ -129,7 +152,8 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .collect(Collectors.toList());
 
         if (entries.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Geen ongefactureerde uren gevonden.");
+            logger.warn("Geen ongefactureerde uren gevonden voor clientId={}, gebruiker={}", clientId, username);
+            return null;
         }
 
         List<InvoiceItem> items = new ArrayList<>();

@@ -28,14 +28,14 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .httpBasic(httpBasic -> httpBasic.disable()) // ✅ disable basic auth
+                .httpBasic(httpBasic -> httpBasic.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .headers(headers -> headers
                         .frameOptions(frameOptions -> frameOptions.disable())
                         .contentSecurityPolicy(csp -> csp
                                 .policyDirectives("default-src 'none'; " +
                                         "script-src 'self'; " +
-                                        "connect-src 'self' ws://localhost:8080; " + // ✅ sta WebSocket toe
+                                        "connect-src 'self' ws://localhost:8080; " +
                                         "child-src 'self'; " +
                                         "img-src 'self' data:; " +
                                         "font-src 'self' data:; " +
@@ -46,7 +46,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/ws/**", // ✅ WebSocket verkeer expliciet toestaan
+                                "/ws/**",
                                 "/api/auth/**",
                                 "/api/users/register",
                                 "/v3/api-docs/**",

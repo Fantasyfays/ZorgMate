@@ -4,7 +4,6 @@ import com.example.zorgmate.dal.entity.Client.Client;
 import com.example.zorgmate.dal.repository.ClientRepository;
 import com.example.zorgmate.dto.Client.ClientCreateDTO;
 import com.example.zorgmate.dto.Client.ClientResponseDTO;
-import com.example.zorgmate.security.AuthUtils;
 import com.example.zorgmate.service.interfaces.ClientService;
 import org.springframework.stereotype.Service;
 
@@ -26,8 +25,13 @@ public class ClientServiceImpl implements ClientService {
                 .name(dto.getName())
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
+                .postcode(dto.getPostcode())
+                .houseNumber(dto.getHouseNumber())
+                .street(dto.getStreet())     // 🟢 haalt straat nu uit DTO
+                .city(dto.getCity())         // 🟢 haalt stad nu uit DTO
                 .createdBy(username)
                 .build();
+
         client = clientRepository.save(client);
         return mapToDTO(client);
     }
@@ -45,6 +49,10 @@ public class ClientServiceImpl implements ClientService {
                 .name(client.getName())
                 .email(client.getEmail())
                 .phone(client.getPhone())
+                .street(client.getStreet())
+                .city(client.getCity())
+                .postcode(client.getPostcode())
+                .houseNumber(client.getHouseNumber())
                 .build();
     }
 }

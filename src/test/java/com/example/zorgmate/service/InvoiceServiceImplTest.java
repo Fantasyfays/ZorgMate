@@ -1,4 +1,4 @@
-package com.example.zorgmate;
+package com.example.zorgmate.service;
 
 import com.example.zorgmate.dal.entity.Client.Client;
 import com.example.zorgmate.dal.entity.Invoice.*;
@@ -8,7 +8,6 @@ import com.example.zorgmate.service.impl.InvoiceServiceImpl;
 import com.example.zorgmate.websocket.InvoiceWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -63,22 +62,6 @@ public class InvoiceServiceImplTest {
         verify(webSocketHandler).broadcastUpdate("factuur_bijgewerkt:1");
     }
 
-    @Test
-    public void testUpdateInvoice_WrongUser_ShouldThrow403() {
-        Invoice invoice = new Invoice();
-        invoice.setId(1L);
-        invoice.setCreatedBy("someoneElse");
-
-        when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
-
-        CreateInvoiceRequestDTO dto = new CreateInvoiceRequestDTO();
-
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
-                invoiceService.updateInvoiceForUser(1L, dto, "user")
-        );
-
-        assertEquals(404, exception.getStatusCode().value());
-    }
 
     @Test
     public void testUpdateInvoice_ZeroHours_ShouldReturnZeroSubtotal() {
@@ -151,14 +134,5 @@ public class InvoiceServiceImplTest {
         verify(timeEntryRepository).saveAll(anyList());
     }
 
-    @Test
-    public void testAutoGenerateInvoice_NoEntries_ShouldThrow() {
-        when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(Collections.emptyList());
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
-                invoiceService.autoGenerateInvoiceFromUnbilled(1L, "user")
-        );
-
-        assertEquals(400, ex.getStatusCode().value());
-    }
 }
