@@ -49,7 +49,7 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
         }
 
         sessions.add(session);
-        System.out.println("🔌 WebSocket verbonden: " + session.getId());
+        System.out.println("🔌 WebSocket verbondenn: " + session.getId());
     }
 
     @Override
