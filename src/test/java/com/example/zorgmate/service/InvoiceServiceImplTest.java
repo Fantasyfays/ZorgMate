@@ -68,7 +68,7 @@ public class InvoiceServiceImplTest {
         verify(invoiceRepository).save(invoice);
         verify(invoiceItemRepository).deleteAll(any());
         verify(invoiceItemRepository).saveAll(any());
-        verify(webSocketHandler).broadcastUpdate("factuur_bijgewerkt:1");
+        verify(webSocketHandler).sendToUser(any(), any());
     }
 
     @Test
@@ -124,7 +124,7 @@ public class InvoiceServiceImplTest {
         verify(invoiceRepository).save(any());
         verify(invoiceItemRepository).saveAll(any());
         verify(timeEntryRepository).saveAll(any());
-        verify(webSocketHandler).broadcastUpdate("factuur_gegenereerd:123");
+        verify(webSocketHandler).sendToUser(any(), any());
     }
 
     @Test

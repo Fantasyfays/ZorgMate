@@ -6,12 +6,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Component
 public class InvoiceWebSocketHandler extends TextWebSocketHandler {
 
     private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    private final Map<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final JwtUtil jwtUtil;
 
     public InvoiceWebSocketHandler(JwtUtil jwtUtil) {
@@ -35,6 +38,7 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
 
                 String username = jwtUtil.extractUsername(token);
                 System.out.println("WebSocket verbinding geauthenticeerd voor gebruiker: " + username);
+                userSessions.put(username, session);
 
             } catch (Exception e) {
                 System.out.println("Token validatie of extractie mislukt: " + e.getMessage());
@@ -61,15 +65,20 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
         sessions.remove(session);
         System.out.println("Verbinding gesloten: " + session.getId());
+
+        userSessions.entrySet().removeIf(entry -> entry.getValue().getId().equals(session.getId()));
+        System.out.println("Verbinding gesloten: " + session.getId());
     }
 
-    public void broadcastUpdate(String message) {
-        for (WebSocketSession session : sessions) {
+
+    public void sendToUser(String username, String message) {
+        WebSocketSession session = userSessions.get(username);
+        if (session != null && session.isOpen()) {
             try {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(message));
-                }
-            } catch (Exception e) {
+                session.sendMessage(new TextMessage(message));
+
+            }
+            catch (Exception e) {
                 System.err.println("Fout bij verzenden via WebSocket: " + e.getMessage());
             }
         }

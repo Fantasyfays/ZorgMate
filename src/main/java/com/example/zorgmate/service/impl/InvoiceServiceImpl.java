@@ -94,7 +94,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceRepository.save(invoice);
 
         try {
-            webSocketHandler.broadcastUpdate("factuur_bijgewerkt:" + invoice.getId());
+            webSocketHandler.sendToUser(username,"factuur_bijgewerkt" + invoice.getId());
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for updated invoice {}", invoice.getId(), e);
         }
@@ -114,7 +114,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceRepository.delete(invoice);
 
         try {
-            webSocketHandler.broadcastUpdate("factuur_verwijderd:" + invoiceId);
+            webSocketHandler.sendToUser(username,"factuur_bijgewerkt" + invoice.getId());
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for deleted invoice {}", invoiceId, e);
         }
@@ -181,7 +181,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         timeEntryRepository.saveAll(entries);
 
         try {
-            webSocketHandler.broadcastUpdate("factuur_gegenereerd:" + invoice.getId());
+            webSocketHandler.sendToUser(username,"factuur_bijgewerkt" + invoice.getId());
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for auto-generated invoice {}", invoice.getId(), e);
         }
