@@ -1,6 +1,7 @@
 package com.example.zorgmate.external;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -22,11 +23,11 @@ public class PostcodeApiClient {
         headers.set("X-Api-Key", apiKey);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<Map> response = restTemplate.exchange(
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
                 entity,
-                Map.class
+                new ParameterizedTypeReference<>() {}
         );
 
         return response.getBody();

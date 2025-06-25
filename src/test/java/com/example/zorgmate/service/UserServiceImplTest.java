@@ -6,6 +6,7 @@ import com.example.zorgmate.dal.repository.UserRepository;
 import com.example.zorgmate.dto.User.RegisterRequest;
 import com.example.zorgmate.dto.User.UpdateUserRequest;
 import com.example.zorgmate.dto.User.UserDTO;
+import com.example.zorgmate.exception.UserNotFoundException;
 import com.example.zorgmate.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,55 +33,55 @@ class UserServiceImplTest {
 
     @Test
     void registerUser_ShouldThrowException_WhenUsernameAlreadyExists() {
-        RegisterRequest request = new RegisterRequest("johndoe", "password123", UserRole.USER);
-        when(userRepository.findByUsername("johndoe")).thenReturn(Optional.of(new User()));
+        RegisterRequest request = new RegisterRequest("fays", "123", UserRole.USER);
+        when(userRepository.findByUsername("fays")).thenReturn(Optional.of(new User()));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             userService.registerUser(request);
         });
 
-        assertEquals("Username already in use", exception.getMessage());
+        assertEquals("Gebruikersnaam word al gebruikt", exception.getMessage());
     }
 
     @Test
     void updateUser_ShouldThrowException_WhenUserNotFound() {
-        Long userId = 123L;
-        UpdateUserRequest request = new UpdateUserRequest("newname", UserRole.ADMIN);
+        Long userId = 5L;
+        UpdateUserRequest request = new UpdateUserRequest("nieuwefays", UserRole.ADMIN);
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -> {
             userService.updateUser(userId, request);
         });
 
-        assertEquals("Gebruiker niet gevonden", exception.getMessage());
+        assertEquals("Gebruiker met ID 5 niet gevonden", exception.getMessage());
     }
 
     @Test
     void deleteUser_ShouldThrowException_WhenUserDoesNotExist() {
-        Long userId = 456L;
+        Long userId = 5L;
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+        UserNotFoundException exception = assertThrows(UserNotFoundException.class, () -> {
             userService.deleteUser(userId);
         });
 
-        assertEquals("User with ID 456 not found.", exception.getMessage());
+        assertEquals("Gebruiker met ID 5 niet gevonden", exception.getMessage());
     }
 
     @Test
     void registerUser_ShouldSaveAndReturnUserDTO_WhenValid() {
-        RegisterRequest request = new RegisterRequest("janedoe", "secret", null);
-        User savedUser = new User(1L, "janedoe", "encodedpass", UserRole.USER);
+        RegisterRequest request = new RegisterRequest("omar", "1234", null);
+        User savedUser = new User(1L, "omar", "beveiligd", UserRole.USER);
 
-        when(userRepository.findByUsername("janedoe")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("secret")).thenReturn("encodedpass");
+        when(userRepository.findByUsername("omar")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("geheim")).thenReturn("beveiligd");
         when(userRepository.save(Mockito.any(User.class))).thenReturn(savedUser);
 
         UserDTO result = userService.registerUser(request);
 
-        assertEquals("janedoe", result.getUsername());
+        assertEquals("omar", result.getUsername());
         assertEquals(UserRole.USER, result.getRole());
         assertEquals(1L, result.getId());
     }

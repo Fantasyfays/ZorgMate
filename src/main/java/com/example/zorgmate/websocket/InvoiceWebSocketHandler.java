@@ -43,13 +43,13 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
             }
 
         } else {
-            System.out.println(" Geen token gevonden in WebSocket request.");
+            System.out.println("Geen token gevonden in WebSocket request.");
             session.close();
             return;
         }
 
         sessions.add(session);
-        System.out.println("🔌 WebSocket verbondenn: " + session.getId());
+        System.out.println("WebSocket verbondenn: " + session.getId());
     }
 
     @Override

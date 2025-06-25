@@ -7,8 +7,7 @@ import com.example.zorgmate.dal.entity.Invoice.TimeEntry;
 import com.example.zorgmate.dal.repository.ClientRepository;
 import com.example.zorgmate.dal.repository.InvoiceRepository;
 import com.example.zorgmate.dal.repository.TimeEntryRepository;
-import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
-import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
+import com.example.zorgmate.dto.Invoice.AutoInvoiceRequestDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,10 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,10 +47,9 @@ public class InvoiceControllerIntegrationTest {
     @Test
     @WithMockUser(username = "user1")
     public void testAutoGenerateInvoice_withHours_returns200AndCorrectAmount() throws Exception {
-        // Maak klant aan
         Client klant = new Client();
-        klant.setName("Jan");
-        klant.setEmail("jan@mail.com");
+        klant.setName("fays");
+        klant.setEmail("fays@mail.com");
         klant.setPhone("0612345678");
         klant.setPostcode("1234AB");
         klant.setHouseNumber("12");
@@ -62,7 +58,6 @@ public class InvoiceControllerIntegrationTest {
         klant.setCreatedBy("user1");
         clientRepository.save(klant);
 
-        // Voeg uren toe
         TimeEntry uren = new TimeEntry();
         uren.setClient(klant);
         uren.setHours(5);
@@ -72,23 +67,22 @@ public class InvoiceControllerIntegrationTest {
         uren.setDate(LocalDate.now());
         timeEntryRepository.save(uren);
 
-        // Maak body als JSON-string
-        String jsonBody = "{ \"clientId\": " + klant.getId() + " }";
+        AutoInvoiceRequestDTO dto = new AutoInvoiceRequestDTO();
+        dto.setClientId(klant.getId());
 
-        // Doe de POST call en controleer response
         mockMvc.perform(post("/api/invoices/auto-generate")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonBody))
+                        .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("\"receiverName\":\"Jan\"")))
-                .andExpect(content().string(containsString("\"totalAmount\":250")));
+                .andExpect(jsonPath("$.receiverName").value("fays"))
+                .andExpect(jsonPath("$.totalAmount").value(250));
     }
 
     @Test
     @WithMockUser(username = "testuser")
     public void testAutoGenerateInvoice_withoutHours_returns400() throws Exception {
         Client klant = new Client();
-        klant.setName("LegeKlant");
+        klant.setName("Klant");
         klant.setEmail("leeg@mail.com");
         klant.setPhone("0600000000");
         klant.setPostcode("0000AA");
@@ -98,19 +92,22 @@ public class InvoiceControllerIntegrationTest {
         klant.setCreatedBy("testuser");
         clientRepository.save(klant);
 
-        String jsonBody = "{ \"clientId\": " + klant.getId() + " }";
+        AutoInvoiceRequestDTO dto = new AutoInvoiceRequestDTO();
+        dto.setClientId(klant.getId());
 
         mockMvc.perform(post("/api/invoices/auto-generate")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonBody))
-                .andExpect(status().isBadRequest());
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Geen ongefactureerde uren gevonden voor clientId=" + klant.getId()));
     }
 
     @Test
     @WithMockUser(username = "peter")
     public void testGetInvoice_nonExistingInvoice_returns404() throws Exception {
-        mockMvc.perform(get("/api/invoices/999999"))
-                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/invoices/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Factuur met ID 99 niet gevonden"));
     }
 
     @Test
@@ -128,8 +125,7 @@ public class InvoiceControllerIntegrationTest {
         invoiceRepository.save(factuur);
 
         mockMvc.perform(delete("/api/invoices/" + factuur.getId()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Geen toegang tot factuur met ID " + factuur.getId()));
     }
-
-
 }

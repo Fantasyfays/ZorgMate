@@ -1,12 +1,10 @@
 package com.example.zorgmate.controller;
 
-import com.example.zorgmate.dal.entity.Invoice.Invoice;
 import com.example.zorgmate.dto.Invoice.AutoInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
 import com.example.zorgmate.service.interfaces.InvoiceService;
 import com.example.zorgmate.dal.entity.Invoice.InvoiceStatus;
-import com.example.zorgmate.service.result.DeleteResult;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -84,14 +82,10 @@ public class InvoiceController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable Long id, Authentication authentication) {
         String username = authentication.getName();
-        DeleteResult result = invoiceService.deleteInvoiceForUser(id, username);
-
-        return switch (result) {
-            case NOT_FOUND -> ResponseEntity.notFound().build();
-            case FORBIDDEN -> ResponseEntity.status(403).build();
-            case DELETED -> ResponseEntity.noContent().build();
-        };
+        invoiceService.deleteInvoiceForUser(id, username);
+        return ResponseEntity.noContent().build(); // Als er geen exception gegooid wordt, is het verwijderd
     }
+
 
 
     @PostMapping("/auto-generate")

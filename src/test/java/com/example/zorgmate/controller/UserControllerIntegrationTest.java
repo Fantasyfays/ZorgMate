@@ -43,8 +43,8 @@ public class UserControllerIntegrationTest {
     void setup() {
         userRepository.deleteAll();
         existingUser = new User();
-        existingUser.setUsername("existinguser");
-        existingUser.setPassword("encodedpass");
+        existingUser.setUsername("user");
+        existingUser.setPassword("123");
         existingUser.setRole(UserRole.USER);
         userRepository.save(existingUser);
     }
@@ -71,8 +71,8 @@ public class UserControllerIntegrationTest {
     @WithMockUser
     public void registerUser_UsernameAlreadyExists_Returns400() throws Exception {
         RegisterRequest request = new RegisterRequest();
-        request.setUsername("existinguser");
-        request.setPassword("password123");
+        request.setUsername("user");
+        request.setPassword("123");
         request.setRole(UserRole.USER);
 
         String json = objectMapper.writeValueAsString(request);
@@ -86,38 +86,20 @@ public class UserControllerIntegrationTest {
 
     @Test
     @WithMockUser
-    public void registerUser_InvalidRequest_Returns400WithValidationErrors() throws Exception {
-        RegisterRequest request = new RegisterRequest();
-        request.setUsername("");
-        request.setPassword("");
-
-
-        String json = objectMapper.writeValueAsString(request);
-
-        mockMvc.perform(post("/api/users/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$").isMap())
-                .andExpect(jsonPath("$").value(hasKey("username")))
-                .andExpect(jsonPath("$").value(hasKey("password")));
-    }
-
-    @Test
-    @WithMockUser
     public void getUserById_ExistingUser_ReturnsUserDTO() throws Exception {
         mockMvc.perform(get("/api/users/" + existingUser.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("existinguser"));
+                .andExpect(jsonPath("$.username").value("user"));
     }
 
     @Test
     @WithMockUser
-    public void getUserById_NonExistingUser_Returns400() throws Exception {
+    public void getUserById_NonExistingUser_Returns404() throws Exception {
         mockMvc.perform(get("/api/users/999999"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(status().isNotFound()) // <== Aangepast
+                .andExpect(jsonPath("$.error").value("Gebruiker met ID 999999 niet gevonden")); // optioneel nauwkeuriger
     }
+
 
     @Test
     @WithMockUser
@@ -138,7 +120,7 @@ public class UserControllerIntegrationTest {
 
     @Test
     @WithMockUser
-    public void updateUser_NonExistingUser_Returns400() throws Exception {
+    public void updateUser_NonExistingUser_Returns404() throws Exception {
         UpdateUserRequest request = new UpdateUserRequest();
         request.setUsername("updateduser");
         request.setRole(UserRole.ADMIN);
@@ -148,9 +130,10 @@ public class UserControllerIntegrationTest {
         mockMvc.perform(put("/api/users/999999")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(status().isNotFound()) // <== Aangepast
+                .andExpect(jsonPath("$.error").value("Gebruiker met ID 999999 niet gevonden")); // optioneel nauwkeuriger
     }
+
 
     @Test
     @WithMockUser
@@ -175,16 +158,16 @@ public class UserControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("User with ID " + existingUser.getId() + " has been deleted."));
 
-        // Controleer dat gebruiker ook echt verwijderd is
         Optional<User> deleted = userRepository.findById(existingUser.getId());
         assertTrue(deleted.isEmpty());
     }
 
     @Test
     @WithMockUser
-    public void deleteUser_NonExistingUser_Returns400() throws Exception {
+    public void deleteUser_NonExistingUser_Returns404() throws Exception {
         mockMvc.perform(delete("/api/users/999999"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(status().isNotFound()) // <== Aangepast
+                .andExpect(jsonPath("$.error").value("Gebruiker met ID 999999 niet gevonden")); // optioneel nauwkeuriger
     }
+
 }

@@ -27,8 +27,8 @@ public class ClientServiceImpl implements ClientService {
                 .phone(dto.getPhone())
                 .postcode(dto.getPostcode())
                 .houseNumber(dto.getHouseNumber())
-                .street(dto.getStreet())     // 🟢 haalt straat nu uit DTO
-                .city(dto.getCity())         // 🟢 haalt stad nu uit DTO
+                .street(dto.getStreet())
+                .city(dto.getCity())
                 .createdBy(username)
                 .build();
 

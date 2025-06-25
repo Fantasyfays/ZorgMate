@@ -7,7 +7,7 @@ public class AuthUtils {
     public static String getCurrentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String name = auth != null ? auth.getName() : null;
-        System.out.println("👤 Huidige ingelogde gebruiker (via AuthUtils): " + name);
+        System.out.println("Huidige ingelogde gebruiker (via AuthUtils): " + name);
         return name;
     }
 }

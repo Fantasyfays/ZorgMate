@@ -10,8 +10,10 @@ import com.example.zorgmate.dal.repository.TimeEntryRepository;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
+import com.example.zorgmate.exception.AccessDeniedToInvoiceException;
+import com.example.zorgmate.exception.InvoiceNotFoundException;
+import com.example.zorgmate.exception.NoUnbilledHoursFoundException;
 import com.example.zorgmate.service.interfaces.InvoiceService;
-import com.example.zorgmate.service.result.DeleteResult;
 import com.example.zorgmate.websocket.InvoiceWebSocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,12 +58,10 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     public InvoiceResponseDTO getInvoiceByIdForUser(Long id, String username) {
         Invoice invoice = invoiceRepository.findById(id)
-                .filter(i -> i.getCreatedBy().equals(username))
-                .orElse(null);
+                .orElseThrow(() -> new InvoiceNotFoundException(id));
 
-        if (invoice == null) {
-            logger.warn("Factuur niet gevonden of geen toegang: id={}, gebruiker={}", id, username);
-            return null;
+        if (!invoice.getCreatedBy().equals(username)) {
+            throw new AccessDeniedToInvoiceException(id);
         }
 
         List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
@@ -71,12 +71,10 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     public InvoiceResponseDTO updateInvoiceForUser(Long id, CreateInvoiceRequestDTO dto, String username) {
         Invoice invoice = invoiceRepository.findById(id)
-                .filter(i -> i.getCreatedBy().equals(username))
-                .orElse(null);
+                .orElseThrow(() -> new InvoiceNotFoundException(id));
 
-        if (invoice == null) {
-            logger.warn("Kan factuur niet bijwerken: id={} bestaat niet of toegang geweigerd voor {}", id, username);
-            return null;
+        if (!invoice.getCreatedBy().equals(username)) {
+            throw new AccessDeniedToInvoiceException(id);
         }
 
         invoice.setInvoiceNumber(dto.getInvoiceNumber());
@@ -105,17 +103,12 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public DeleteResult deleteInvoiceForUser(Long invoiceId, String username) {
-        Invoice invoice = invoiceRepository.findById(invoiceId).orElse(null);
-
-        if (invoice == null) {
-            logger.warn("Factuur niet gevonden: id={}, gebruiker={}", invoiceId, username);
-            return DeleteResult.NOT_FOUND;
-        }
+    public void deleteInvoiceForUser(Long invoiceId, String username) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new InvoiceNotFoundException(invoiceId));
 
         if (!invoice.getCreatedBy().equals(username)) {
-            logger.warn("Gebruiker {} heeft geen toegang tot factuur id={}", username, invoiceId);
-            return DeleteResult.FORBIDDEN;
+            throw new AccessDeniedToInvoiceException(invoiceId);
         }
 
         invoiceRepository.delete(invoice);
@@ -125,20 +118,15 @@ public class InvoiceServiceImpl implements InvoiceService {
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for deleted invoice {}", invoiceId, e);
         }
-
-        return DeleteResult.DELETED;
     }
-
 
     @Override
     public void updateInvoiceStatusForUser(Long id, InvoiceStatus status, String username) {
         Invoice invoice = invoiceRepository.findById(id)
-                .filter(i -> i.getCreatedBy().equals(username))
-                .orElse(null);
+                .orElseThrow(() -> new InvoiceNotFoundException(id));
 
-        if (invoice == null) {
-            logger.warn("Kan status niet bijwerken: factuur niet gevonden of geen toegang, id={}, gebruiker={}", id, username);
-            return;
+        if (!invoice.getCreatedBy().equals(username)) {
+            throw new AccessDeniedToInvoiceException(id);
         }
 
         invoice.setStatus(status);
@@ -152,8 +140,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .collect(Collectors.toList());
 
         if (entries.isEmpty()) {
-            logger.warn("Geen ongefactureerde uren gevonden voor clientId={}, gebruiker={}", clientId, username);
-            return null;
+            throw new NoUnbilledHoursFoundException(clientId);
         }
 
         List<InvoiceItem> items = new ArrayList<>();
@@ -201,6 +188,8 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         return mapToDTO(invoice, items);
     }
+
+    // Helpers
 
     private InvoiceResponseDTO mapToDTO(Invoice invoice, List<InvoiceItem> items) {
         List<InvoiceItemDTO> itemDTOs = items.stream()

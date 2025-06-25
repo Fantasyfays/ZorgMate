@@ -55,7 +55,7 @@ public class JwtUtil {
                     .parseClaimsJws(token);
             return true;
         } catch (JwtException e) {
-            System.out.println("❌ JWT VALIDATIE MISLUKT: " + e.getMessage());
+            System.out.println("JWT VALIDATIE MISLUKT: " + e.getMessage());
             return false;
         }
     }
