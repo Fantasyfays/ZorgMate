@@ -40,7 +40,6 @@ jobs:
             -Dsonar.login=${SONAR_TOKEN} \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
             -Dsonar.inclusions=**/service/**/*.java \
-            -Dsonar.exclusions=**/controller/**,**/dal/**,**/dto/**,**/security/**,**/ZorgmateApplication.java
 
   deploy:
     runs-on: ubuntu-latest
