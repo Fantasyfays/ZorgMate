@@ -95,9 +95,9 @@ public class UserControllerIntegrationTest {
     @Test
     @WithMockUser
     public void getUserById_NonExistingUser_Returns404() throws Exception {
-        mockMvc.perform(get("/api/users/999999"))
-                .andExpect(status().isNotFound()) // <== Aangepast
-                .andExpect(jsonPath("$.error").value("Gebruiker met ID 999999 niet gevonden")); // optioneel nauwkeuriger
+        mockMvc.perform(get("/api/users/9"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Gebruiker met ID 9 niet gevonden"));
     }
 
 
