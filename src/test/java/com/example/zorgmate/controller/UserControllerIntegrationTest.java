@@ -81,7 +81,7 @@ public class UserControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Username already in use"));
+                .andExpect(jsonPath("$.error").value("Gebruikersnaam word al gebruikt"));
     }
 
     @Test
