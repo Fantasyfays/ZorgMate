@@ -31,7 +31,6 @@ public class InvoiceServiceImplTest {
     private TimeEntryRepository timeEntryRepository;
     private InvoiceWebSocketHandler webSocketHandler;
     private InvoiceServiceImpl invoiceService;
-    private UserRepository userRepository;
 
     @BeforeEach
     public void setup() {
@@ -39,9 +38,12 @@ public class InvoiceServiceImplTest {
         invoiceItemRepository = mock(InvoiceItemRepository.class);
         timeEntryRepository = mock(TimeEntryRepository.class);
         webSocketHandler = mock(InvoiceWebSocketHandler.class);
-        userRepository = mock(UserRepository.class);
-        invoiceService = new InvoiceServiceImpl(invoiceRepository, invoiceItemRepository, timeEntryRepository, webSocketHandler, userRepository);
+        UserRepository userRepository = mock(UserRepository.class);
+
+        invoiceService = new InvoiceServiceImpl(invoiceRepository, invoiceItemRepository,
+                timeEntryRepository, webSocketHandler, userRepository);
     }
+
 
     @Test
     public void testUpdateInvoice_HappyFlow() {

@@ -117,7 +117,7 @@ public class InvoiceControllerIntegrationTest {
         factuur.setInvoiceNumber("INV-123");
         factuur.setSenderName("Bob");
         factuur.setReceiverName("Klant");
-        factuur.setReceiverEmail("klant@example.com"); // <- fix hier
+        factuur.setReceiverEmail("klant@example.com");
         factuur.setIssueDate(LocalDate.now());
         factuur.setDueDate(LocalDate.now().plusDays(14));
         factuur.setStatus(InvoiceStatus.UNPAID);
