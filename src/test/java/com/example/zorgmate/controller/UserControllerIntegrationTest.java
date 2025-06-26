@@ -130,7 +130,7 @@ public class UserControllerIntegrationTest {
         mockMvc.perform(put("/api/users/999999")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().isNotFound()) // <== Aangepast
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Gebruiker met ID 999999 niet gevonden")); // optioneel nauwkeuriger
     }
 
@@ -166,7 +166,7 @@ public class UserControllerIntegrationTest {
     @WithMockUser
     public void deleteUser_NonExistingUser_Returns404() throws Exception {
         mockMvc.perform(delete("/api/users/999999"))
-                .andExpect(status().isNotFound()) // <== Aangepast
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Gebruiker met ID 999999 niet gevonden")); // optioneel nauwkeuriger
     }
 
