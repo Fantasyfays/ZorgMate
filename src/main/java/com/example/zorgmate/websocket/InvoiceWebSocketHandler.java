@@ -8,12 +8,10 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 @Component
 public class InvoiceWebSocketHandler extends TextWebSocketHandler {
 
-    private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final Map<String, WebSocketSession> userSessions = new ConcurrentHashMap<>();
     private final JwtUtil jwtUtil;
 
@@ -31,7 +29,7 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
 
             try {
                 if (!jwtUtil.validateToken(token)) {
-                    System.out.println(" Ongeldig token ontvangen via WebSocket.");
+                    System.out.println("Ongeldig token ontvangen via WebSocket.");
                     session.close();
                     return;
                 }
@@ -52,8 +50,7 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        sessions.add(session);
-        System.out.println("WebSocket verbondenn: " + session.getId());
+        System.out.println("WebSocket verbonden: " + session.getId());
     }
 
     @Override
@@ -63,25 +60,25 @@ public class InvoiceWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
-        sessions.remove(session);
-        System.out.println("Verbinding gesloten: " + session.getId());
-
         userSessions.entrySet().removeIf(entry -> entry.getValue().getId().equals(session.getId()));
         System.out.println("Verbinding gesloten: " + session.getId());
     }
 
+    public void sendToUser(String creatorUsername, String receiverEmail, String message) {
+        sendToSingleUser(creatorUsername, message);
+        if (receiverEmail != null && !receiverEmail.equals(creatorUsername)) {
+            sendToSingleUser(receiverEmail, message);
+        }
+    }
 
-    public void sendToUser(String username, String message) {
+    private void sendToSingleUser(String username, String message) {
         WebSocketSession session = userSessions.get(username);
         if (session != null && session.isOpen()) {
             try {
                 session.sendMessage(new TextMessage(message));
-
-            }
-            catch (Exception e) {
-                System.err.println("Fout bij verzenden via WebSocket: " + e.getMessage());
+            } catch (Exception e) {
+                System.err.println("Fout bij verzenden naar " + username + ": " + e.getMessage());
             }
         }
     }
-
 }

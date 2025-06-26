@@ -4,5 +4,6 @@ public enum UserRole {
     USER,
     ADMIN,
     MEDEWERKER,
-    BEDRIJF
+    BEDRIJF,
+    CLIENT
 }

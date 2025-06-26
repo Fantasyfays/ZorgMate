@@ -117,6 +117,7 @@ public class InvoiceControllerIntegrationTest {
         factuur.setInvoiceNumber("INV-123");
         factuur.setSenderName("Bob");
         factuur.setReceiverName("Klant");
+        factuur.setReceiverEmail("klant@example.com"); // <- fix hier
         factuur.setIssueDate(LocalDate.now());
         factuur.setDueDate(LocalDate.now().plusDays(14));
         factuur.setStatus(InvoiceStatus.UNPAID);
@@ -128,4 +129,5 @@ public class InvoiceControllerIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("Geen toegang tot factuur met ID " + factuur.getId()));
     }
+
 }

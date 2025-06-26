@@ -7,6 +7,7 @@ import com.example.zorgmate.dal.entity.Invoice.TimeEntry;
 import com.example.zorgmate.dal.repository.InvoiceItemRepository;
 import com.example.zorgmate.dal.repository.InvoiceRepository;
 import com.example.zorgmate.dal.repository.TimeEntryRepository;
+import com.example.zorgmate.dal.repository.UserRepository;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
@@ -34,20 +35,35 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceItemRepository invoiceItemRepository;
     private final TimeEntryRepository timeEntryRepository;
     private final InvoiceWebSocketHandler webSocketHandler;
+    private final UserRepository userRepository;
 
     public InvoiceServiceImpl(InvoiceRepository invoiceRepository,
                               InvoiceItemRepository invoiceItemRepository,
                               TimeEntryRepository timeEntryRepository,
-                              InvoiceWebSocketHandler webSocketHandler) {
+                              InvoiceWebSocketHandler webSocketHandler,
+                              UserRepository userRepository) {
         this.invoiceRepository = invoiceRepository;
         this.invoiceItemRepository = invoiceItemRepository;
         this.timeEntryRepository = timeEntryRepository;
         this.webSocketHandler = webSocketHandler;
+        this.userRepository = userRepository;
     }
 
     @Override
     public List<InvoiceResponseDTO> getInvoicesForUser(String username) {
-        return invoiceRepository.findByCreatedBy(username).stream()
+        boolean isClient = userRepository.findByUsername(username)
+                .map(user -> user.getRole().name().equalsIgnoreCase("CLIENT"))
+                .orElse(false);
+
+        List<Invoice> invoices;
+
+        if (isClient) {
+            invoices = invoiceRepository.findByReceiverEmail(username);
+        } else {
+            invoices = invoiceRepository.findByCreatedBy(username);
+        }
+
+        return invoices.stream()
                 .map(invoice -> {
                     List<InvoiceItem> items = invoiceItemRepository.findByInvoiceId(invoice.getId());
                     return mapToDTO(invoice, items);
@@ -60,7 +76,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         Invoice invoice = invoiceRepository.findById(id)
                 .orElseThrow(() -> new InvoiceNotFoundException(id));
 
-        if (!invoice.getCreatedBy().equals(username)) {
+        if (!invoice.getCreatedBy().equals(username) && !username.equals(invoice.getReceiverEmail())) {
             throw new AccessDeniedToInvoiceException(id);
         }
 
@@ -94,7 +110,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceRepository.save(invoice);
 
         try {
-            webSocketHandler.sendToUser(username,"factuur_bijgewerkt" + invoice.getId());
+            webSocketHandler.sendToUser(username, invoice.getReceiverEmail(), "factuur_bijgewerkt" + invoice.getId());
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for updated invoice {}", invoice.getId(), e);
         }
@@ -114,7 +130,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceRepository.delete(invoice);
 
         try {
-            webSocketHandler.sendToUser(username,"factuur_bijgewerkt" + invoice.getId());
+            webSocketHandler.sendToUser(username, invoice.getReceiverEmail(), "factuur_bijgewerkt" + invoice.getId());
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for deleted invoice {}", invoiceId, e);
         }
@@ -165,6 +181,7 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .invoiceNumber(generateInvoiceNumber())
                 .senderName(username)
                 .receiverName(entries.get(0).getClient().getName())
+                .receiverEmail(entries.get(0).getClient().getEmail())
                 .amount(total)
                 .issueDate(LocalDate.now())
                 .dueDate(LocalDate.now().plusDays(14))
@@ -181,7 +198,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         timeEntryRepository.saveAll(entries);
 
         try {
-            webSocketHandler.sendToUser(username,"factuur_bijgewerkt" + invoice.getId());
+            webSocketHandler.sendToUser(username, invoice.getReceiverEmail(), "factuur_bijgewerkt" + invoice.getId());
         } catch (Exception e) {
             logger.error("WebSocket broadcast failed for auto-generated invoice {}", invoice.getId(), e);
         }

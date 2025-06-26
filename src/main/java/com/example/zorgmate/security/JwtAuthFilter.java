@@ -33,16 +33,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
+
             if (jwtUtil.validateToken(token)) {
                 String username = jwtUtil.extractUsername(token);
                 System.out.println("Token is geldig. Gebruiker: " + username);
 
                 User user = userRepository.findByUsername(username).orElse(null);
-                if (user != null) {
-                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            username, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))
-                    );
+                if (user != null && user.getRole() != null) {
+                    String roleName = "ROLE_" + user.getRole().name(); // Bijvoorbeeld ROLE_CLIENT
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(roleName);
+
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(username, null, List.of(authority));
+
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                } else {
+                    System.out.println("Gebruiker niet gevonden of rol ontbreekt.");
                 }
             } else {
                 System.out.println("Ongeldig token.");

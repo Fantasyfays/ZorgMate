@@ -5,6 +5,7 @@ import com.example.zorgmate.dal.entity.Invoice.*;
 import com.example.zorgmate.dal.repository.InvoiceItemRepository;
 import com.example.zorgmate.dal.repository.InvoiceRepository;
 import com.example.zorgmate.dal.repository.TimeEntryRepository;
+import com.example.zorgmate.dal.repository.UserRepository;
 import com.example.zorgmate.dto.Invoice.CreateInvoiceRequestDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceItemDTO;
 import com.example.zorgmate.dto.Invoice.InvoiceResponseDTO;
@@ -30,6 +31,7 @@ public class InvoiceServiceImplTest {
     private TimeEntryRepository timeEntryRepository;
     private InvoiceWebSocketHandler webSocketHandler;
     private InvoiceServiceImpl invoiceService;
+    private UserRepository userRepository;
 
     @BeforeEach
     public void setup() {
@@ -37,7 +39,8 @@ public class InvoiceServiceImplTest {
         invoiceItemRepository = mock(InvoiceItemRepository.class);
         timeEntryRepository = mock(TimeEntryRepository.class);
         webSocketHandler = mock(InvoiceWebSocketHandler.class);
-        invoiceService = new InvoiceServiceImpl(invoiceRepository, invoiceItemRepository, timeEntryRepository, webSocketHandler);
+        userRepository = mock(UserRepository.class);
+        invoiceService = new InvoiceServiceImpl(invoiceRepository, invoiceItemRepository, timeEntryRepository, webSocketHandler, userRepository);
     }
 
     @Test
@@ -45,6 +48,7 @@ public class InvoiceServiceImplTest {
         Invoice invoice = new Invoice();
         invoice.setId(1L);
         invoice.setCreatedBy("user");
+        invoice.setReceiverEmail("klant@example.com");
 
         when(invoiceRepository.findById(1L)).thenReturn(Optional.of(invoice));
         when(invoiceItemRepository.findByInvoiceId(1L)).thenReturn(List.of());
@@ -68,7 +72,7 @@ public class InvoiceServiceImplTest {
         verify(invoiceRepository).save(invoice);
         verify(invoiceItemRepository).deleteAll(any());
         verify(invoiceItemRepository).saveAll(any());
-        verify(webSocketHandler).sendToUser(any(), any());
+        verify(webSocketHandler).sendToUser("user", "klant@example.com", "factuur_bijgewerkt1");
     }
 
     @Test
@@ -105,8 +109,11 @@ public class InvoiceServiceImplTest {
         entry.setDescription("Werk");
         entry.setCreatedBy("user");
         entry.setDate(LocalDate.now());
+
         Client client = new Client();
         client.setName("TestKlant");
+        client.setEmail("klant@example.com");
+
         entry.setClient(client);
 
         when(timeEntryRepository.findByClientIdAndInvoiceIsNull(1L)).thenReturn(List.of(entry));
@@ -124,7 +131,7 @@ public class InvoiceServiceImplTest {
         verify(invoiceRepository).save(any());
         verify(invoiceItemRepository).saveAll(any());
         verify(timeEntryRepository).saveAll(any());
-        verify(webSocketHandler).sendToUser(any(), any());
+        verify(webSocketHandler).sendToUser("user", "klant@example.com", "factuur_bijgewerkt123");
     }
 
     @Test
